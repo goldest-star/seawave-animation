@@ -72,7 +72,8 @@ struct scene_model : scene_base
     int picked_object;
 
     gui_scene_structure gui_scene;
-    vcl::timer_interval timer;
+    vcl::timer_interval timer_scaling;
+    vcl::timer_interval timer_height;
 };
 
 #endif

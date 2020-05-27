@@ -83,7 +83,7 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
 
 
     // Load a texture image on GPU and stores its ID
-    texture_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/grass.png"));
+    texture_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/sea2.png"));
 
     
     // Initial Keyframe data vector of (position, time)
@@ -103,9 +103,12 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
 
     // Set timer bounds
     // You should adapt these extremal values to the type of interpolation
-    timer.t_min = keyframes[1].t;                   // first time of the keyframe
-    timer.t_max = keyframes[keyframes.size() - 2].t;  // last time of the keyframe
-    timer.t = timer.t_min;
+    timer_scaling.t_min = 1;
+    timer_scaling.t_max = 100;
+    timer_scaling.t = timer_scaling.t_min;
+    timer_height.t_min = 100;                   
+    timer_height.t_max = 200;
+    timer_height.t = timer_height.t_min;
 
     // Prepare the visual elements
     point_visual = mesh_primitive_sphere();
@@ -144,11 +147,17 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
     It is used to compute time-varying argument and perform data data drawing */
 void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& )
 {
+    timer_scaling.update();
+    const float t_scaling = timer_scaling.t/10;
+    gui_scene.scaling = t_scaling;
+    timer_height.update();
+    const float t_height = timer_height.t/200;
+    gui_scene.height = 1.5 - t_height;
     set_gui();
 
     glEnable( GL_POLYGON_OFFSET_FILL ); // avoids z-fighting when displaying wireframe
 
-
+    
     // Display terrain
     // Before displaying a textured surface: bind the associated texture id
     glBindTexture(GL_TEXTURE_2D, texture_id);
@@ -218,6 +227,10 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
             draw(grass, scene.camera, shaders["mesh"]);
         }
 
+    update_terrain();
+    update_tree();
+    update_mushroom();
+    update_grass();
     glBindTexture(GL_TEXTURE_2D, scene.texture_white);
     glDepthMask(true);
 }
