@@ -63,9 +63,12 @@ struct scene_model : scene_base
     void update_tree();
     void update_mushroom();
     void update_grass();
+
     void set_creature_rotation(float t_creature);
     void set_data_creature_animation(std::map<std::string, GLuint>& shaders);
-
+    void set_plane_rotation(float t_creature);
+    void set_data_plane_animation(std::map<std::string, GLuint>& shaders);
+    
     // Called every time the mouse is clicked
     void mouse_click(scene_structure& scene, GLFWwindow* window, int button, int action, int mods);
     // Called every time the mouse is moved
@@ -73,7 +76,8 @@ struct scene_model : scene_base
 
     // Data (p_i,t_i)
 
-    vcl::buffer<vec3t> keyframes; // Given (position,time)
+    vcl::buffer<vec3t> keyframes_creature; // Given (position,time)
+    vcl::buffer<vec3t> keyframes_plane;
 
     vcl::mesh_drawable point_visual;                       // moving point
     vcl::mesh_drawable keyframe_visual;                    // keyframe samples
@@ -82,13 +86,17 @@ struct scene_model : scene_base
     vcl::curve_dynamic_drawable trajectory;                // Draw the trajectory of the moving point as a curve
     
     vcl::hierarchy_mesh_drawable creature;
+    vcl::hierarchy_mesh_drawable plane;
     // Store the index of a selected sphere
     int picked_object;
 
     gui_scene_structure gui_scene;
+
     vcl::timer_interval timer_scaling;
     vcl::timer_interval timer_height;
     vcl::timer_interval timer_creature;
+    vcl::timer_interval timer_plane;
+
 };
 
 #endif

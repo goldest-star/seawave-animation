@@ -26,6 +26,7 @@ mesh create_mushroom(float cylinder_rad, float cylinder_height, float cone_rad, 
 mesh create_grass(float length, float width);
 mesh create_sky(float b);
 hierarchy_mesh_drawable create_creature();
+hierarchy_mesh_drawable create_plane();
 
 /** This function is called before the beginning of the animation loop
     It is used to initialize all part-specific data */
@@ -35,6 +36,10 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
     //Create moving creature
     creature = create_creature();
     creature.set_shader_for_all_elements(shaders["mesh"]);
+
+    //Create moving plane
+    plane = create_plane();
+    plane.set_shader_for_all_elements(shaders["mesh"]);
 
     //Fill in grass position
     for (int i = 0; i < N_grass; ++i) {
@@ -82,8 +87,16 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
     // Load a texture image on GPU and stores its ID
     texture_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/sea2.png"));
     
+    timer_scaling.t_min = 1;
+    timer_scaling.t_max = 100;
+    timer_scaling.t = timer_scaling.t_min;
+    timer_height.t_min = 100;
+    timer_height.t_max = 200;
+    timer_height.t = timer_height.t_min;
+
     set_data_creature_animation(shaders);
-    
+    set_data_plane_animation(shaders);
+
     //Create skybox
     skybox_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/sky.png"));
     sky = mesh_drawable(create_sky(50));
@@ -116,6 +129,9 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
 
     timer_creature.update();
     const float t_creature = timer_creature.t;
+
+    timer_plane.update();
+    const float t_plane = timer_plane.t;
 
     set_gui();
 
@@ -195,15 +211,16 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
     update_mushroom();
     update_grass();
     
-    const size_t N = keyframes.size();
+    const size_t N = keyframes_creature.size();
     
     set_creature_rotation(t_creature);
-
+    set_plane_rotation(t_plane);
 
     // Draw current position
     //point_visual.uniform.transform.translation = p;
 
     draw(creature, scene.camera, shaders["mesh"]);
+    draw(plane, scene.camera, shaders["mesh"]);
     // Draw moving point trajectory
 
 
@@ -211,7 +228,7 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
     // Draw sphere at each keyframe position
     if (gui_scene.display_keyframe) {
         for (size_t k = 0; k < N; ++k) {
-            const vec3& p_keyframe = keyframes[k].p;
+            const vec3& p_keyframe = keyframes_creature[k].p;
             keyframe_visual.uniform.transform.translation = p_keyframe;
             draw(keyframe_visual, scene.camera);
         }
@@ -219,7 +236,7 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
 
     // Draw selected sphere in red
     if (picked_object != -1) {
-        const vec3& p_keyframe = keyframes[picked_object].p;
+        const vec3& p_keyframe = keyframes_creature[picked_object].p;
         keyframe_picked.uniform.transform.translation = p_keyframe;
         draw(keyframe_picked, scene.camera);
     }
@@ -227,9 +244,9 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
 
     // Draw segments between each keyframe
     if (gui_scene.display_polygon) {
-        for (size_t k = 0; k < keyframes.size() - 1; ++k) {
-            const vec3& pa = keyframes[k].p;
-            const vec3& pb = keyframes[k + 1].p;
+        for (size_t k = 0; k < keyframes_creature.size() - 1; ++k) {
+            const vec3& pa = keyframes_creature[k].p;
+            const vec3& pb = keyframes_creature[k + 1].p;
             segment_drawer.uniform_parameter.p1 = pa;
             segment_drawer.uniform_parameter.p2 = pb;
             segment_drawer.draw(shaders["segment_im"], scene.camera);
@@ -537,6 +554,31 @@ hierarchy_mesh_drawable create_creature() {
     return hierarchy;
 }
 
+hierarchy_mesh_drawable create_plane() {
+    hierarchy_mesh_drawable hierarchy;
+    const float radius_body = 0.4f;
+    const float height_body = 0.8f;
+    const float height_wing = 0.3f;
+    mesh_drawable bigbody = mesh_drawable(create_cone(radius_body, height_body, 0));
+    bigbody.uniform.transform.scaling_axis = { 0.2f,1.0f,1.0f };
+    bigbody.uniform.color = { 0.5f,0.3f,0.1f };
+    mesh_drawable head = mesh_drawable(create_cone(radius_body / 2.0f, height_body / 2.0f, 2 / 3.0f * height_body));
+    head.uniform.transform.scaling_axis = { 0.2f,1.0f,1.0f };
+
+    mesh wing1;
+    wing1.position = { vec3(0,radius_body / 2,0), vec3(0,radius_body / 2,height_body / 2), vec3(height_wing,radius_body / 2,0) };         // 3D-coordinates
+    wing1.connectivity = { {0,1,2} };
+    mesh wing2;
+    wing2.position = { vec3(0,-radius_body / 2,0), vec3(0,-radius_body / 2,height_body / 2), vec3(height_wing,-radius_body / 2,0) };         // 3D-coordinates
+    wing2.connectivity = { {0,1,2} };
+
+    hierarchy.add(bigbody, "bigbody");
+    hierarchy.add(head, "head", "bigbody");
+    hierarchy.add(wing1, "wing1", "bigbody");
+    hierarchy.add(wing2, "wing2", "bigbody");
+
+    return hierarchy;
+}
 mesh create_sky(float b) {
     mesh sky;
 
@@ -618,11 +660,11 @@ void scene_model::mouse_click(scene_structure& scene, GLFWwindow* window, int, i
 
         // Check if this ray intersects a position (represented by a sphere)
         //  Loop over all positions and get the intersected position (the closest one in case of multiple intersection)
-        const size_t N = keyframes.size();
+        const size_t N = keyframes_creature.size();
         picked_object = -1;
         float distance_min = 0.0f;
         for (size_t k = 0; k < N; ++k) {
-            const vec3 c = keyframes[k].p;
+            const vec3 c = keyframes_creature[k].p;
             const picking_info info = ray_intersect_sphere(r, c, 0.1f);
 
             if (info.picking_valid) {// the ray intersects a sphere
@@ -652,7 +694,7 @@ void scene_model::mouse_move(scene_structure& scene, GLFWwindow* window) {
         // Compute intersection between current ray and the plane orthogonal to the view direction and passing by the selected object
         const vec2 cursor = glfw_cursor_coordinates_window(window);
         const ray r = picking_ray(scene.camera, cursor);
-        vec3& p0 = keyframes[picked_object].p;
+        vec3& p0 = keyframes_creature[picked_object].p;
         const picking_info info = ray_intersect_plane(r, n, p0);
 
         // translate the position
@@ -663,7 +705,7 @@ void scene_model::mouse_move(scene_structure& scene, GLFWwindow* window) {
 
 void scene_model::set_data_creature_animation(std::map<std::string, GLuint>& shaders){
     // Initial Keyframe data vector of (position, time)
-    keyframes = { { {-10,0,2}   , 0.0f  },
+    keyframes_creature = { { {-10,0,2}   , 0.0f  },
                   { {5,-7.5,2} , 10.0f  },
                   { {0,0,2}    , 20.0f  },
                   { {0,5,1.8}    , 25.0f  },
@@ -679,16 +721,9 @@ void scene_model::set_data_creature_animation(std::map<std::string, GLuint>& sha
 
     // Set timer bounds
     // You should adapt these extremal values to the type of interpolation
-    timer_creature.t_min = keyframes[1].t;                   // first time of the keyframe
-    timer_creature.t_max = keyframes[keyframes.size() - 2].t;  // last time of the keyframe
+    timer_creature.t_min = keyframes_creature[1].t;                   // first time of the keyframe
+    timer_creature.t_max = keyframes_creature[keyframes_creature.size() - 2].t;  // last time of the keyframe
     timer_creature.t = timer_creature.t_min;
-
-    timer_scaling.t_min = 1;
-    timer_scaling.t_max = 100;
-    timer_scaling.t = timer_scaling.t_min;
-    timer_height.t_min = 100;
-    timer_height.t_max = 200;
-    timer_height.t = timer_height.t_min;
 
     // Prepare the visual elements
     point_visual = mesh_primitive_sphere();
@@ -709,23 +744,42 @@ void scene_model::set_data_creature_animation(std::map<std::string, GLuint>& sha
     segment_drawer.init();
     timer_creature.scale = 0.5f;
 }
+void scene_model::set_data_plane_animation(std::map<std::string, GLuint>& shaders) {
+    keyframes_plane = { { {-2,2,2.5}   , 0.0f  },
+                  { {0,2,2.5}    , 1.0f  },
+                  { {2,2,2.5}    , 2.0f  },
+                  { {2,4,2.5}    , 2.5f  },
+                  { {4,4,2.5}    , 3.0f  },
+                  { {4,4,3.5}    , 3.5f  },
+                  { {4,0,4}  , 3.75f  },
+                  { {3,-2,3.5} , 4.5f  },
+                  { {3,-2,2.5} , 5.0f  },
+                  { {2,-2,2.5}   , 6.0f  },
+                  { {0,2,2.5} , 7.0f },
+                  { {-2,-1,2.5}, 8.0f },
+    };
+    timer_plane.t_min = keyframes_plane[1].t;                   // first time of the keyframe
+    timer_plane.t_max = keyframes_plane[keyframes_plane.size() - 2].t;  // last time of the keyframe
+    timer_plane.t = timer_plane.t_min;
 
+    timer_plane.scale = 0.5f;
+}
 
 void scene_model::set_creature_rotation(float t_creature){
     /***************************************************/
     /*****************Begin Animation*******************/
-    const int idx = index_at_value(t_creature, keyframes);
+    const int idx = index_at_value(t_creature, keyframes_creature);
 
     // Assume a closed curve trajectory
 
-    const float t1 = keyframes[idx].t;
-    const float t0 = keyframes[idx - 1].t;
-    const float t2 = keyframes[idx + 1].t;
-    const float t3 = keyframes[idx + 2].t;
-    const vec3& p1 = keyframes[idx].p;
-    const vec3& p0 = keyframes[idx - 1].p;
-    const vec3& p2 = keyframes[idx + 1].p;
-    const vec3& p3 = keyframes[idx + 2].p;
+    const float t1 = keyframes_creature[idx].t;
+    const float t0 = keyframes_creature[idx - 1].t;
+    const float t2 = keyframes_creature[idx + 1].t;
+    const float t3 = keyframes_creature[idx + 2].t;
+    const vec3& p1 = keyframes_creature[idx].p;
+    const vec3& p0 = keyframes_creature[idx - 1].p;
+    const vec3& p2 = keyframes_creature[idx + 1].p;
+    const vec3& p3 = keyframes_creature[idx + 2].p;
 
     const vec3 p = cardinal_spline_interpolation(t_creature, t0, t1, t2, t3, p0, p1, p2, p3, 1.0);
     const vec3 p_der = cardinal_spline_interpolation_der(t_creature, t0, t1, t2, t3, p0, p1, p2, p3, 1.0);
@@ -764,6 +818,36 @@ void scene_model::set_creature_rotation(float t_creature){
     creature["leg2_right"].transform.rotation = R_leg2;
     creature["leg3_right"].transform.rotation = R_leg3;
     creature.update_local_to_global_coordinates();
+}
+
+void scene_model::set_plane_rotation(float t_creature) {
+    /***************************************************/
+    /*****************Begin Animation*******************/
+    const int idx = index_at_value(t_creature, keyframes_plane);
+
+    // Assume a closed curve trajectory
+
+    const float t1 = keyframes_plane[idx].t;
+    const float t0 = keyframes_plane[idx - 1].t;
+    const float t2 = keyframes_plane[idx + 1].t;
+    const float t3 = keyframes_plane[idx + 2].t;
+    const vec3& p1 = keyframes_plane[idx].p;
+    const vec3& p0 = keyframes_plane[idx - 1].p;
+    const vec3& p2 = keyframes_plane[idx + 1].p;
+    const vec3& p3 = keyframes_plane[idx + 2].p;
+
+    const vec3 p = cardinal_spline_interpolation(t_creature, t0, t1, t2, t3, p0, p1, p2, p3, 1.0);
+    const vec3 p_der = cardinal_spline_interpolation_der(t_creature, t0, t1, t2, t3, p0, p1, p2, p3, 1.0);
+    // Store current trajectory of point p
+
+    /** *************************************************************  **/
+    /** Compute the (animated) transformations applied to the elements **/
+    /** *************************************************************  **/
+
+    // The body oscillate along the z direction
+    plane["bigbody"].transform.translation = p;
+    plane["bigbody"].transform.rotation = rotation_between_vector_mat3({ 0,0,1 }, p_der);
+    plane.update_local_to_global_coordinates();
 }
 
 void scene_model::set_gui() {
