@@ -13,7 +13,8 @@ struct vec3t {
 struct gui_scene_structure
 {
     bool wireframe = false;
-
+    bool display_keyframe = true;
+    bool display_polygon = true;
     float height = 0.6f;
     float scaling = 3.0f;
     int octave = 7;
@@ -45,12 +46,16 @@ struct scene_model : scene_base
     vcl::mesh_drawable tree;
     std::vector<vcl::vec3> mush_position;
     vcl::mesh_drawable mush;
+    vcl::mesh_drawable sky;
+
     const int N_tree = 30;
     const int N_mushroom = 50;
     const int N_grass = 30;
 
     GLuint texture_id;
     GLuint grass_id;
+    GLuint skybox_id;
+
     vcl::mesh_drawable grass;
     std::vector<vcl::vec3> grass_position;
 
@@ -58,8 +63,16 @@ struct scene_model : scene_base
     void update_tree();
     void update_mushroom();
     void update_grass();
+    void set_creature_rotation(float t_creature);
+    void set_data_creature_animation(std::map<std::string, GLuint>& shaders);
+
+    // Called every time the mouse is clicked
+    void mouse_click(scene_structure& scene, GLFWwindow* window, int button, int action, int mods);
+    // Called every time the mouse is moved
+    void mouse_move(scene_structure& scene, GLFWwindow* window);
 
     // Data (p_i,t_i)
+
     vcl::buffer<vec3t> keyframes; // Given (position,time)
 
     vcl::mesh_drawable point_visual;                       // moving point
@@ -67,13 +80,15 @@ struct scene_model : scene_base
     vcl::mesh_drawable keyframe_picked;                    // showing the picked sample
     vcl::segment_drawable_immediate_mode segment_drawer;   // used to draw segments between keyframe samples
     vcl::curve_dynamic_drawable trajectory;                // Draw the trajectory of the moving point as a curve
-
+    
+    vcl::hierarchy_mesh_drawable creature;
     // Store the index of a selected sphere
     int picked_object;
 
     gui_scene_structure gui_scene;
     vcl::timer_interval timer_scaling;
     vcl::timer_interval timer_height;
+    vcl::timer_interval timer_creature;
 };
 
 #endif
