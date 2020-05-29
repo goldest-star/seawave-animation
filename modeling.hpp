@@ -9,6 +9,12 @@ struct vec3t {
     float t;     // time
 };
 
+struct particle_structure
+{
+    vcl::vec3 p; // Position
+    vcl::vec3 v; // Speed
+};
+
 // Stores some parameters that can be set from the GUI
 struct gui_scene_structure
 {
@@ -38,57 +44,56 @@ struct scene_model : scene_base
     void setup_data(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& gui);
     void frame_draw(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& gui);
 
+    // void set_gui(timer_event& timer);
     void set_gui();
 
     // visual representation of a surface
     vcl::mesh_drawable terrain;
-    std::vector<vcl::vec3> tree_position;
-    vcl::mesh_drawable tree;
-    std::vector<vcl::vec3> mush_position;
-    vcl::mesh_drawable mush;
+    std::vector<vcl::vec3> box_position;
+    vcl::mesh_drawable box;
+    std::vector<vcl::vec3> fish_position;
+    vcl::mesh_drawable fish;
     vcl::mesh_drawable sky;
+    vcl::mesh_drawable island;
+    vcl::mesh_drawable boat;
+    vcl::mesh_drawable flag;
+    vcl::mesh_drawable missle;
 
-    const int N_tree = 30;
-    const int N_mushroom = 50;
-    const int N_grass = 30;
+    std::list<particle_structure> particles; // Storage of all currently active particles
+
+    const int N_box = 30;
+    const int N_fish = 20;
 
     GLuint texture_id;
-    GLuint grass_id;
+    GLuint fish_id;
     GLuint skybox_id;
+    GLuint island_id;
+    GLuint box_id;
+    GLuint boat_id;
+    GLuint flag_id;
 
-    vcl::mesh_drawable grass;
-    std::vector<vcl::vec3> grass_position;
+    
 
     void update_terrain();
-    void update_tree();
-    void update_mushroom();
-    void update_grass();
+    
+    void update_box();
+    void update_fish();
+    void update_island();
+    void update_boat();
 
     void set_creature_rotation(float t_creature);
     void set_data_creature_animation(std::map<std::string, GLuint>& shaders);
     void set_plane_rotation(float t_creature);
     void set_data_plane_animation(std::map<std::string, GLuint>& shaders);
-    
-    // Called every time the mouse is clicked
-    void mouse_click(scene_structure& scene, GLFWwindow* window, int button, int action, int mods);
-    // Called every time the mouse is moved
-    void mouse_move(scene_structure& scene, GLFWwindow* window);
 
     // Data (p_i,t_i)
 
     vcl::buffer<vec3t> keyframes_creature; // Given (position,time)
     vcl::buffer<vec3t> keyframes_plane;
 
-    vcl::mesh_drawable point_visual;                       // moving point
-    vcl::mesh_drawable keyframe_visual;                    // keyframe samples
-    vcl::mesh_drawable keyframe_picked;                    // showing the picked sample
-    vcl::segment_drawable_immediate_mode segment_drawer;   // used to draw segments between keyframe samples
-    vcl::curve_dynamic_drawable trajectory;                // Draw the trajectory of the moving point as a curve
-    
     vcl::hierarchy_mesh_drawable creature;
     vcl::hierarchy_mesh_drawable plane;
     // Store the index of a selected sphere
-    int picked_object;
 
     gui_scene_structure gui_scene;
 
@@ -96,9 +101,8 @@ struct scene_model : scene_base
     vcl::timer_interval timer_height;
     vcl::timer_interval timer_creature;
     vcl::timer_interval timer_plane;
+    vcl::timer_event timer;    // Timer allowing to indicate periodic events
 
 };
 
 #endif
-
-
