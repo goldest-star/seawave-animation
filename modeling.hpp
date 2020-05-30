@@ -9,12 +9,6 @@ struct vec3t {
     float t;     // time
 };
 
-struct particle_structure
-{
-    vcl::vec3 p; // Position
-    vcl::vec3 v; // Speed
-};
-
 // Stores some parameters that can be set from the GUI
 struct gui_scene_structure
 {
@@ -25,6 +19,12 @@ struct gui_scene_structure
     float scaling = 3.0f;
     int octave = 7;
     float persistency = 0.4f;
+};
+
+struct particle_structure
+{
+    vcl::vec3 p; // Position
+    vcl::vec3 v; // Speed
 };
 
 struct scene_model : scene_base
@@ -44,56 +44,52 @@ struct scene_model : scene_base
     void setup_data(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& gui);
     void frame_draw(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& gui);
 
-    // void set_gui(timer_event& timer);
     void set_gui();
 
     // visual representation of a surface
     vcl::mesh_drawable terrain;
+    vcl::mesh_drawable island;
     std::vector<vcl::vec3> box_position;
     vcl::mesh_drawable box;
     std::vector<vcl::vec3> fish_position;
     vcl::mesh_drawable fish;
-    vcl::mesh_drawable sky;
-    vcl::mesh_drawable island;
     vcl::mesh_drawable boat;
+    vcl::mesh_drawable sky;
     vcl::mesh_drawable flag;
     vcl::mesh_drawable missle;
 
     std::list<particle_structure> particles; // Storage of all currently active particles
 
     const int N_box = 30;
-    const int N_fish = 20;
+    const int N_fish = 30;
 
     GLuint texture_id;
     GLuint fish_id;
-    GLuint skybox_id;
-    GLuint island_id;
     GLuint box_id;
     GLuint boat_id;
+    GLuint skybox_id;
+    GLuint island_id;
     GLuint flag_id;
-
     
 
     void update_terrain();
-    
+    void update_island();
     void update_box();
     void update_fish();
-    void update_island();
-    void update_boat();
 
     void set_creature_rotation(float t_creature);
     void set_data_creature_animation(std::map<std::string, GLuint>& shaders);
     void set_plane_rotation(float t_creature);
     void set_data_plane_animation(std::map<std::string, GLuint>& shaders);
+    
 
     // Data (p_i,t_i)
 
     vcl::buffer<vec3t> keyframes_creature; // Given (position,time)
     vcl::buffer<vec3t> keyframes_plane;
-
+  
     vcl::hierarchy_mesh_drawable creature;
     vcl::hierarchy_mesh_drawable plane;
-    // Store the index of a selected sphere
 
     gui_scene_structure gui_scene;
 
@@ -101,8 +97,7 @@ struct scene_model : scene_base
     vcl::timer_interval timer_height;
     vcl::timer_interval timer_creature;
     vcl::timer_interval timer_plane;
-    vcl::timer_event timer;    // Timer allowing to indicate periodic events
-
+    vcl::timer_event timer_missle;
 };
 
 #endif

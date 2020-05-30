@@ -1,38 +1,37 @@
 
 #include "modeling.hpp"
-#include <random>
+
 
 #ifdef SCENE_3D_GRAPHICS
 
 // Add vcl namespace within the current one - Allows to use function from vcl library without explicitely preceeding their name with vcl::
 using namespace vcl;
 
-// Generator for uniform random number
-std::default_random_engine generator;
-std::uniform_real_distribution<float> distrib(0.0,1.0);
 
 
 static size_t index_at_value(float t, const vcl::buffer<vec3t>& v);
 static vec3 cardinal_spline_interpolation(float t, float t0, float t1, float t2, float t3, const vec3& p0, const vec3& p1, const vec3& p2, const vec3& p3, float K);
 static vec3 cardinal_spline_interpolation_der(float t, float t0, float t1, float t2, float t3, const vec3& p0, const vec3& p1, const vec3& p2, const vec3& p3, float K);
 
-
+float evaluate_terrain_z(float u, float v);
 float evaluate_perlin_terrain_z(float u, float v, const gui_scene_structure& gui_scene);
+vec3 evaluate_terrain(float u, float v);
 vec3 evaluate_perlin_terrain(float u, float v, const gui_scene_structure& gui_scene);
-vec3 evaluate_perlin_island(float u, float v, const gui_scene_structure& gui_scene);
 mesh create_terrain(const gui_scene_structure& gui_scene);
-mesh create_cylinder(float radius, float height);
-mesh create_cone(float radius, float height, float z_offset);
-mesh create_box(float hight, float width, float length);
-mesh create_fish(float length, float width);
-mesh create_sky(float b);
+vec3 evaluate_perlin_island(float u, float v, const gui_scene_structure& gui_scene);
 mesh create_island(const gui_scene_structure& gui_scene);
+mesh create_box(float hight, float width, float length);
 mesh create_boat(float length, float width, float height);
 mesh create_flag(float length, float flag_h);
+mesh create_cylinder(float radius, float height);
+mesh create_cone(float radius, float height, float z_offset);
+mesh create_box_foliage(float radius, float height, float z_offset, float cylinder_height);
+mesh create_box(float cylinder_rad, float cylinder_height, float box_rad, float box_height, float box_z_offset, const vec3& box_col, const vec3& cylin_col);
 mesh create_missle(const float r, const float length);
+mesh create_fish(float length, float width);
+mesh create_sky(float b);
 hierarchy_mesh_drawable create_creature();
 hierarchy_mesh_drawable create_plane();
-
 
 /** This function is called before the beginning of the animation loop
     It is used to initialize all part-specific data */
@@ -47,27 +46,24 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
     //Create moving plane
     plane = create_plane();
     plane.set_shader_for_all_elements(shaders["mesh"]);
-
+    
     //Create boat
     boat = create_boat(5.f, 2.f, 1.f);
-    boat.uniform.shading = {1,0,0};
+    boat.uniform.shading = { 1,0,0 };
+
+    //Create flag
+    flag = create_flag(4.f, 4.f);
+    flag.uniform.shading = { 1,0,0 };
 
     // Create missle
     missle = create_missle(0.1f, 1.0f);
     missle.uniform.shading = {1,0,0};
 
-    flag = create_flag(4.f,4.f);
-    flag.uniform.shading = {1,0,0};
-
     //Fill in fish position
     for (int i = 0; i < N_fish; ++i) {
         float u = rand_interval(0, 1);
         float v = rand_interval(0, 1);
-        vec3 pos = { 20 * (u - 0.5f), 20 * (v - 0.5f),  evaluate_perlin_terrain_z(u,v,gui_scene) - 0.1f};
-        vec3 pos_island =  evaluate_perlin_island(u, v, gui_scene);
-        pos_island[2] -= 0.1;
-        if (pos_island[2]>pos[2]-0.2) fish_position.push_back(pos_island); 
-        else fish_position.push_back(pos);
+        vec3 pos = { 20 * (u - 0.5f), 20 * (v - 0.5f),  evaluate_perlin_terrain_z(u,v,gui_scene)};
         fish_position.push_back(pos);
     }
 
@@ -76,8 +72,7 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
     fish.uniform.shading = { 1,0,0 }; // set pure ambiant component (no diffuse, no specular) - allow to only see the color of the texture
 
     // Load a texture (with transparent background)
-    fish_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/fish.png"), GL_REPEAT, GL_REPEAT);
-
+    
 
     //Fill in box position
     for (int i = 0; i < N_box; ++i) {
@@ -87,38 +82,36 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
         box_position.push_back(pos);
     }
 
-    //Create box
+    //Create box 
+    const vec3 box_col = { 0.0f, 0.85f, 0.5f };
+    const vec3 cylin_col = { 0.87f, 0.72f, 0.52f };
     box = create_box(0.1f, 0.4f, 1.0f);
     box.uniform.shading.specular = 0.0f;
 
-    // Load a texture (with transparent background)
-    box_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/box.png"), GL_REPEAT, GL_REPEAT);
-
-    // Load a texture of island
-    island_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/island.png"), GL_REPEAT, GL_REPEAT);
-
-    // Load a texture of boat
-    boat_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/boat.png"), GL_REPEAT, GL_REPEAT);
-
-    // Load a texture of flag
-    flag_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/flag.png"), GL_REPEAT, GL_REPEAT);
+    
 
     // Load a texture image on GPU and stores its ID
     texture_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/sea2.png"));
-    
+    island_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/island.png"), GL_REPEAT, GL_REPEAT);
+    box_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/box.png"), GL_REPEAT, GL_REPEAT);
+    boat_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/boat.png"), GL_REPEAT, GL_REPEAT);
+    flag_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/flag.png"), GL_REPEAT, GL_REPEAT);
+    fish_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/fish.png"), GL_REPEAT, GL_REPEAT);
+    skybox_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/sky.png"));
+    //set different timers
     timer_scaling.t_min = 1;
     timer_scaling.t_max = 100;
     timer_scaling.t = timer_scaling.t_min;
     timer_height.t_min = 100;
     timer_height.t_max = 200;
     timer_height.t = timer_height.t_min;
-    timer.periodic_event_time_step = 0.2f;
+    timer_missle.periodic_event_time_step = 1.2f;
 
     set_data_creature_animation(shaders);
     set_data_plane_animation(shaders);
 
     //Create skybox
-    skybox_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/sky.png"));
+    
     sky = mesh_drawable(create_sky(50));
     sky.uniform.shading = { 1,0,0 };
     sky.uniform.color = { 1.0f,1.0f,1.0f };
@@ -165,36 +158,40 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
     glPolygonOffset( 1.0, 1.0 );
     draw(terrain, scene.camera, shaders["mesh"]);
-
-    // Display island
-    glBindTexture(GL_TEXTURE_2D, scene.texture_white);
+    
     glBindTexture(GL_TEXTURE_2D, island_id);
     draw(island, scene.camera, shaders["mesh"]);
-
-
     glBindTexture(GL_TEXTURE_2D, scene.texture_white);
-    glBindTexture(GL_TEXTURE_2D, box_id);
-    for (int i = 0; i < N_box; ++i) {
-        box.uniform.transform.translation = box_position[i];
-        draw(box, scene.camera, shaders["mesh"]);
-    }
-    
-    glBindTexture(GL_TEXTURE_2D, scene.texture_white);
+
     glBindTexture(GL_TEXTURE_2D, boat_id);
     boat.uniform.transform.translation = vec3{-6,-6,0};
     mat3 R_boat = rotation_from_axis_angle_mat3({0,1,0}, 3.14f/6.0f);
     boat.uniform.transform.rotation = R_boat;
     draw(boat, scene.camera, shaders["mesh"]);
-
     glBindTexture(GL_TEXTURE_2D, scene.texture_white);
+
+    glBindTexture(GL_TEXTURE_2D, box_id);
+    for (int i = 0; i < N_box; ++i) {
+        box.uniform.transform.translation = box_position[i];
+        draw(box, scene.camera, shaders["mesh"]);
+    }
+    glBindTexture(GL_TEXTURE_2D, scene.texture_white);
+    
     glBindTexture(GL_TEXTURE_2D, flag_id);
-    flag.uniform.transform.translation = vec3{-6,-6,0};
+    
     flag.uniform.transform.rotation = R_boat;
+    flag.uniform.transform.translation = vec3{-6,-6,0};
     draw(flag, scene.camera, shaders["mesh"]);
+    flag.uniform.transform.translation = vec3{ -5,-6,-1 };
+    draw(flag, scene.camera, shaders["mesh"]);
+    flag.uniform.transform.translation = vec3{ -6,-6.3,0 };
+    draw(flag, scene.camera, shaders["mesh"]);
+    flag.uniform.transform.translation = vec3{ -5,-6.3,-1 };
+    draw(flag, scene.camera, shaders["mesh"]);
+    glBindTexture(GL_TEXTURE_2D, scene.texture_white);
 
     // After the surface is displayed it is safe to set the texture id to a white image
     //  Avoids to use the previous texture for another object
-    glBindTexture(GL_TEXTURE_2D, scene.texture_white);
     
     // Display skybox
     glBindTexture(GL_TEXTURE_2D, skybox_id);
@@ -206,7 +203,7 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
         draw(terrain, scene.camera, shaders["wireframe"]);
         for (int i = 0; i < N_box; ++i) {
             box.uniform.transform.translation = box_position[i];
-            draw(box, scene.camera, shaders["wireframe"]);
+            draw(box, scene.camera, shaders["mesh"]);
         }
     }
 
@@ -220,13 +217,10 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
     //  - They are supposed to be display from furest to nearest elements
     glDepthMask(false);
 
-
     glBindTexture(GL_TEXTURE_2D, fish_id);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // avoids sampling artifacts
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // avoids sampling artifacts
 
-    // Display a billboard always facing the camera direction
-    // ********************************************************** //
     fish.uniform.transform.rotation = scene.camera.orientation;
     for (int i = 0; i < N_fish; ++i) {
         fish.uniform.transform.translation = fish_position[i];
@@ -243,12 +237,10 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
     update_box();
     update_fish();
     
-    const size_t N = keyframes_creature.size();
-    
     set_creature_rotation(t_creature);
     set_plane_rotation(t_plane);
 
-    const float dt = timer.update();
+    const float dt = timer_missle.update();
 
     // Evolve position of particles
     const vec3 g = {0.0f,0.0f,-9.81f};
@@ -280,19 +272,15 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
 
     draw(missle, scene.camera, shaders["mesh"]);
 
-    // Draw current position
-
     draw(creature, scene.camera, shaders["mesh"]);
     draw(plane, scene.camera, shaders["mesh"]);
-
-    
     
 
-    glBindTexture(GL_TEXTURE_2D, scene.texture_white);
     glDepthMask(true);
 }
 
-void scene_model::update_terrain() {
+void scene_model::update_terrain()
+{
     // Clear memory in case of pre-existing terrain
     terrain.clear();
 
@@ -312,41 +300,50 @@ void scene_model::update_island() {
     island.uniform.shading.specular = 0.0f;
 }
 
-
 void scene_model::update_box() {
-
+    
     for (int i = 0; i < N_box; ++i) {
         float u = box_position[i][0];
         float v = box_position[i][1];
-        vec3 pos = { u, v,  evaluate_perlin_terrain_z(u / 20 + 0.5f,v / 20 + 0.5f,gui_scene) };
+        vec3 pos = { u, v,  evaluate_perlin_terrain_z(u/20+0.5f,v/20+0.5f,gui_scene) };
         box_position[i] = pos;
     }
 }
 
-// Not useful because boat is always in one position
-void scene_model::update_boat() {
-    // for (int i = 0; i < N_box; ++i) {
-    //     float u = box_position[i][0];
-    //     float v = box_position[i][1];
-    //     vec3 pos = { u, v,  evaluate_perlin_terrain_z(u / 20 + 0.5f,v / 20 + 0.5f,gui_scene) };
-    //     box_position[i] = pos;
-    // }
-}
 
 void scene_model::update_fish() {
 
     for (int i = 0; i < N_fish; ++i) {
         float u = fish_position[i][0];
         float v = fish_position[i][1];
-        vec3 pos = { u, v,  evaluate_perlin_terrain_z(u / 20 + 0.5f,v / 20 + 0.5f,gui_scene) - 0.1f };
-        vec3 pos_island =  evaluate_perlin_island(u / 20 + 0.5f,v / 20 + 0.5f, gui_scene );
-        pos_island[2] -= 0.1;
-        if (pos_island[2]>pos[2]-0.2) fish_position[i] = pos_island; 
-        else fish_position[i] = pos;
+        vec3 pos = { u, v,  evaluate_perlin_terrain_z(u / 20 + 0.5f,v / 20 + 0.5f,gui_scene) };
         fish_position[i] = pos;
     }
 }
+// Evaluate height of the terrain for any (u,v) \in [0,1]
+float evaluate_terrain_z(float u, float v)
+{
+    const int N = 4;
+    const vec2 u0[4] = { {0.0f,0.0f},{0.5f,0.5f},{0.2f,0.7f},{0.8f,0.7f} };
+    const float h[4] = { 3.0f,-1.5f,1.0f,2.0f };
+    const float sigma[4] = { 0.5f,0.15f,0.2f,0.2f };
+    float z = 0;
+    for (int i = 0; i < N; ++i) {
+        float d = norm(vec2(u, v) - u0[i]) / sigma[i];
+        z += h[i] * std::exp(-d * d);
+    }
+    return z;
+}
 
+// Evaluate 3D position of the terrain for any (u,v) \in [0,1]
+vec3 evaluate_terrain(float u, float v)
+{
+    const float x = 20*(u-0.5f);
+    const float y = 20*(v-0.5f);
+    const float z = evaluate_terrain_z(u,v);
+
+    return {x,y,z};
+}
 
 float evaluate_perlin_terrain_z(float u, float v, const gui_scene_structure& gui_scene) {
     // get gui parameters
@@ -358,7 +355,6 @@ float evaluate_perlin_terrain_z(float u, float v, const gui_scene_structure& gui
     // Evaluate Perlin noise
     const float noise = perlin(scaling * u, scaling * v, octave, persistency);
     const float z = height * noise;
-
     return z;
 }
 
@@ -369,7 +365,8 @@ vec3 evaluate_perlin_terrain(float u, float v, const gui_scene_structure& gui_sc
     return{ x,y,z };
 }
 // Generate terrain mesh
-mesh create_terrain(const gui_scene_structure& gui_scene) {
+mesh create_terrain(const gui_scene_structure& gui_scene)
+{
     // Number of samples of the terrain is N x N
     const size_t N = 100;
 
@@ -385,11 +382,13 @@ mesh create_terrain(const gui_scene_structure& gui_scene) {
             const float v = kv/(N-1.0f);
 
             // Compute coordinates
+            //terrain.position[kv+N*ku] = evaluate_terrain(u,v);
             terrain.position[kv + N * ku] = evaluate_perlin_terrain(u,v,gui_scene);
             terrain.texture_uv[kv + N * ku] = {5*ku/(float)N,5*kv/(float)N};
-            if (terrain.position[kv + N * ku][2]>0.05) terrain.fill_color_uniform(vec3(1,1,1));
+         
         }
     }
+
 
     // Generate triangle organization
     //  Parametric surface with uniform grid sampling: generate 2 triangles for each grid cell
@@ -409,7 +408,7 @@ mesh create_terrain(const gui_scene_structure& gui_scene) {
     return terrain;
 }
 
-vec3 evaluate_perlin_island(float u, float v, const gui_scene_structure& gui_scene)  {
+vec3 evaluate_perlin_island(float u, float v, const gui_scene_structure& gui_scene) {
     // get gui parameters
     const float scaling = gui_scene.scaling;
     const int octave = gui_scene.octave;
@@ -419,17 +418,8 @@ vec3 evaluate_perlin_island(float u, float v, const gui_scene_structure& gui_sce
     const float noise = perlin(scaling * u, scaling * v, octave, persistency);
     const float x = 20 * (u - 0.5f);
     const float y = 20 * (v - 0.5f);
-    const float z = evaluate_perlin_terrain_z(u, v,gui_scene)*noise * 1.5 - 0.5;
+    const float z = evaluate_perlin_terrain_z(u, v, gui_scene) * noise * 1.5 - 0.5;
     return{ x,y,z };
-}
-
-mesh create_missle(const float r, const float length) {
-    mesh m;
-    m.push_back(create_cylinder(r,length));
-    m.push_back(create_cone(r, -length/7, 0));
-    m.fill_color_uniform(vec3(0.1,0.1,0.1));
-
-    return m;
 }
 
 mesh create_island(const gui_scene_structure& gui_scene) {
@@ -441,27 +431,27 @@ mesh create_island(const gui_scene_structure& gui_scene) {
     island.texture_uv.resize(N * N);
 
     // Fill terrain geometry
-    for(size_t ku=0; ku<N; ++ku) {
-        for(size_t kv=0; kv<N; ++kv) {
+    for (size_t ku = 0; ku < N; ++ku) {
+        for (size_t kv = 0; kv < N; ++kv) {
             // Compute local parametric coordinates (u,v) \in [0,1]
-            const float u = ku/(N-1.0f);
-            const float v = kv/(N-1.0f);
+            const float u = ku / (N - 1.0f);
+            const float v = kv / (N - 1.0f);
 
             // Compute coordinates
-            island.position[kv + N * ku] = evaluate_perlin_island(u,v,gui_scene);
-            island.texture_uv[kv + N * ku] = {5*ku/(float)N,5*kv/(float)N};    
+            island.position[kv + N * ku] = evaluate_perlin_island(u, v, gui_scene);
+            island.texture_uv[kv + N * ku] = { 5 * ku / (float)N,5 * kv / (float)N };
         }
     }
 
     // Generate triangle organization
     //  Parametric surface with uniform grid sampling: generate 2 triangles for each grid cell
     const unsigned int Ns = N;
-    for(unsigned int ku=0; ku<Ns-1; ++ku) {
-        for(unsigned int kv=0; kv<Ns-1; ++kv) {
-            const unsigned int idx = kv + N*ku; // current vertex offset
+    for (unsigned int ku = 0; ku < Ns - 1; ++ku) {
+        for (unsigned int kv = 0; kv < Ns - 1; ++kv) {
+            const unsigned int idx = kv + N * ku; // current vertex offset
 
-            const uint3 triangle_1 = {idx, idx+1+Ns, idx+1};
-            const uint3 triangle_2 = {idx, idx+Ns, idx+1+Ns};
+            const uint3 triangle_1 = { idx, idx + 1 + Ns, idx + 1 };
+            const uint3 triangle_2 = { idx, idx + Ns, idx + 1 + Ns };
 
             island.connectivity.push_back(triangle_1);
             island.connectivity.push_back(triangle_2);
@@ -474,29 +464,29 @@ mesh create_island(const gui_scene_structure& gui_scene) {
 mesh create_box(float hight, float width, float length) {
     mesh m;
 
-    m.position.push_back(vec3(length/2,width/2,hight/2));
-    m.position.push_back(vec3(-length/2,width/2,hight/2));
-    m.position.push_back(vec3(-length/2,-width/2,hight/2));
-    m.position.push_back(vec3(length/2,-width/2,hight/2));
-    m.position.push_back(vec3(length/2,width/2,-hight/2));
-    m.position.push_back(vec3(-length/2,width/2,-hight/2));
-    m.position.push_back(vec3(-length/2,-width/2,-hight/2));
-    m.position.push_back(vec3(length/2,-width/2,-hight/2));
+    m.position.push_back(vec3(length / 2, width / 2, hight / 2));
+    m.position.push_back(vec3(-length / 2, width / 2, hight / 2));
+    m.position.push_back(vec3(-length / 2, -width / 2, hight / 2));
+    m.position.push_back(vec3(length / 2, -width / 2, hight / 2));
+    m.position.push_back(vec3(length / 2, width / 2, -hight / 2));
+    m.position.push_back(vec3(-length / 2, width / 2, -hight / 2));
+    m.position.push_back(vec3(-length / 2, -width / 2, -hight / 2));
+    m.position.push_back(vec3(length / 2, -width / 2, -hight / 2));
 
-    m.connectivity.push_back({0,1,2});
-    m.connectivity.push_back({2,3,0});
-    m.connectivity.push_back({4,5,6});
-    m.connectivity.push_back({6,7,4});
+    m.connectivity.push_back({ 0,1,2 });
+    m.connectivity.push_back({ 2,3,0 });
+    m.connectivity.push_back({ 4,5,6 });
+    m.connectivity.push_back({ 6,7,4 });
 
-    m.connectivity.push_back({1,0,5});
-    m.connectivity.push_back({0,4,5});
-    m.connectivity.push_back({2,3,6});
-    m.connectivity.push_back({3,6,7});
+    m.connectivity.push_back({ 1,0,5 });
+    m.connectivity.push_back({ 0,4,5 });
+    m.connectivity.push_back({ 2,3,6 });
+    m.connectivity.push_back({ 3,6,7 });
 
-    m.connectivity.push_back({3,4,0});
-    m.connectivity.push_back({3,4,7});
-    m.connectivity.push_back({2,5,1});
-    m.connectivity.push_back({2,5,6});
+    m.connectivity.push_back({ 3,4,0 });
+    m.connectivity.push_back({ 3,4,7 });
+    m.connectivity.push_back({ 2,5,1 });
+    m.connectivity.push_back({ 2,5,6 });
 
     m.texture_uv = { {-0.5,-0.5}, {-0.5,0.5}, {0.5,-0.5}, {0.5,0.5},
     {-0.5,-0.5}, {-0.5,0.5}, {0.5,-0.5}, {0.5,0.5},
@@ -504,6 +494,58 @@ mesh create_box(float hight, float width, float length) {
     };
 
     return m;
+}
+
+mesh create_boat(float length, float width, float height)
+{
+    mesh m;
+
+    m.position.push_back(vec3(length / 2, width / 2 * 1.3, height));
+    m.position.push_back(vec3(-length / 2, width / 2 * 1.3, height));
+    m.position.push_back(vec3(-length / 2, -width / 2 * 1.3, height));
+    m.position.push_back(vec3(length / 2, -width / 2 * 1.3, height));
+    m.position.push_back(vec3(length / 2, width / 2, 0));
+    m.position.push_back(vec3(-length / 2, width / 2, 0));
+    m.position.push_back(vec3(-length / 2, -width / 2, 0));
+    m.position.push_back(vec3(length / 2, -width / 2, 0));
+    m.position.push_back(vec3(length / 2 * 1.3, 0, height));
+    m.position.push_back(vec3(-length / 2 * 1.3, 0, height));
+
+    m.connectivity.push_back({ 4,5,6 });
+    m.connectivity.push_back({ 6,7,4 });
+
+    m.connectivity.push_back({ 1,0,5 });
+    m.connectivity.push_back({ 0,4,5 });
+    m.connectivity.push_back({ 2,3,6 });
+    m.connectivity.push_back({ 3,6,7 });
+
+    m.connectivity.push_back({ 0,4,8 });
+    m.connectivity.push_back({ 7,3,8 });
+    m.connectivity.push_back({ 7,4,8 });
+
+    m.connectivity.push_back({ 2,6,9 });
+    m.connectivity.push_back({ 1,5,9 });
+    m.connectivity.push_back({ 5,6,9 });
+
+    m.texture_uv = { {0,2}, {5,2}, {5,0}, {0,0},
+    {0,0}, {5,0}, {5,2}, {0,2},
+    {1,1}, {1,1}
+    };
+    return m;
+}
+
+mesh create_flag(float length, float flag_h)
+{
+    mesh flag;
+    flag.position.push_back(vec3(0, 0, 0));
+    flag.position.push_back(vec3(length / 2, 0, flag_h / 2));
+    flag.position.push_back(vec3(0, 0, flag_h));
+    flag.connectivity.push_back({ 0,1,2 });
+
+    flag.texture_uv = { {-0.5,-0.5}, {-0.5,0.5}, {0.5,-0.5}, {0.5,0.5} };
+
+    return flag;
+
 }
 
 mesh create_cylinder(float radius, float height) {
@@ -570,6 +612,32 @@ mesh create_cone(float radius, float height, float z_offset) {
     return m;
 }
 
+mesh create_box_foliage(float radius, float height, float z_offset, float cylinder_height) {
+    mesh m = create_cone(radius, height, cylinder_height);
+    m.push_back(create_cone(radius, height, cylinder_height + z_offset));
+    m.push_back(create_cone(radius, height, cylinder_height + 2 * z_offset));
+
+    return m;
+}
+
+mesh create_box(float cylinder_rad, float cylinder_height, float box_rad, float box_height, float box_z_offset, const vec3& box_col, const vec3& cylin_col) {
+    mesh m = create_cylinder(cylinder_rad,cylinder_height);
+    m.fill_color_uniform(cylin_col);
+    mesh n = create_box_foliage(box_rad, box_height, box_z_offset, cylinder_height);
+    n.fill_color_uniform(box_col);
+    m.push_back(n);
+    return m;
+}
+
+mesh create_missle(const float r, const float length) {
+    mesh m;
+    m.push_back(create_cylinder(r, length));
+    m.push_back(create_cone(r, -length / 7, 0));
+    m.fill_color_uniform(vec3(0.1, 0.1, 0.1));
+
+    return m;
+}
+
 mesh create_fish(float length, float width) {
     // Create a quad with (u,v)-texture coordinates
     mesh m;
@@ -577,58 +645,6 @@ mesh create_fish(float length, float width) {
     m.texture_uv = { {0,1}, {1,1}, {1,0}, {0,0} };
     m.connectivity = { {0,1,2}, {0,2,3} };
     return m;
-}
-
-mesh create_boat(float length, float width, float height)
-{
-    mesh m;
-
-    m.position.push_back(vec3(length/2,width/2*1.3,height));
-    m.position.push_back(vec3(-length/2,width/2*1.3,height));
-    m.position.push_back(vec3(-length/2,-width/2*1.3,height));
-    m.position.push_back(vec3(length/2,-width/2*1.3,height));
-    m.position.push_back(vec3(length/2,width/2,0));
-    m.position.push_back(vec3(-length/2,width/2,0));
-    m.position.push_back(vec3(-length/2,-width/2,0));
-    m.position.push_back(vec3(length/2,-width/2,0));
-    m.position.push_back(vec3(length/2*1.3,0,height));
-    m.position.push_back(vec3(-length/2*1.3,0,height));
-
-    m.connectivity.push_back({4,5,6});
-    m.connectivity.push_back({6,7,4});
-
-    m.connectivity.push_back({1,0,5});
-    m.connectivity.push_back({0,4,5});
-    m.connectivity.push_back({2,3,6});
-    m.connectivity.push_back({3,6,7});
-
-    m.connectivity.push_back({0,4,8});
-    m.connectivity.push_back({7,3,8});
-    m.connectivity.push_back({7,4,8});
-
-    m.connectivity.push_back({2,6,9});
-    m.connectivity.push_back({1,5,9});
-    m.connectivity.push_back({5,6,9});
-
-    m.texture_uv = { {-0.5,-0.5}, {-0.5,0.5}, {0.5,-0.5}, {0.5,0.5},
-    {-0.5,-0.5}, {-0.5,0.5}, {0.5,-0.5}, {0.5,0.5},
-    {-0.5,-0.5}, {-0.5,0.5}, {0.5,-0.5}, {0.5,0.5}
-    };
-    return m;
-}
-
-mesh create_flag(float length, float flag_h)
-{
-    mesh flag;
-    flag.position.push_back(vec3(0,0,0));
-    flag.position.push_back(vec3(length/2,0,flag_h/2));
-    flag.position.push_back(vec3(0,0,flag_h));
-    flag.connectivity.push_back({0,1,2});
-
-    flag.texture_uv = {{-0.5,-0.5}, {-0.5,0.5}, {0.5,-0.5}, {0.5,0.5}};
-
-    return flag;
-
 }
 
 hierarchy_mesh_drawable create_creature() {
@@ -703,9 +719,9 @@ hierarchy_mesh_drawable create_creature() {
 
 hierarchy_mesh_drawable create_plane() {
     hierarchy_mesh_drawable hierarchy;
-    const float radius_body = 2.0f;
-    const float height_body = 2.0f;
-    const float height_wing = 1.5f;
+    const float radius_body = 0.4f;
+    const float height_body = 0.8f;
+    const float height_wing = 0.3f;
     mesh_drawable bigbody = mesh_drawable(create_cone(radius_body, height_body, 0));
     bigbody.uniform.transform.scaling_axis = { 0.2f,1.0f,1.0f };
     bigbody.uniform.color = { 0.5f,0.3f,0.1f };
@@ -726,7 +742,6 @@ hierarchy_mesh_drawable create_plane() {
 
     return hierarchy;
 }
-
 mesh create_sky(float b) {
     mesh sky;
 
@@ -792,6 +807,8 @@ mesh create_sky(float b) {
 }
 
 
+
+
 void scene_model::set_data_creature_animation(std::map<std::string, GLuint>& shaders){
     // Initial Keyframe data vector of (position, time)
     keyframes_creature = { { {-10,0,2}   , 0.0f  },
@@ -814,9 +831,9 @@ void scene_model::set_data_creature_animation(std::map<std::string, GLuint>& sha
     timer_creature.t_max = keyframes_creature[keyframes_creature.size() - 2].t;  // last time of the keyframe
     timer_creature.t = timer_creature.t_min;
 
+    
     timer_creature.scale = 0.5f;
 }
-
 void scene_model::set_data_plane_animation(std::map<std::string, GLuint>& shaders) {
     keyframes_plane = { { {-2,2,2.5}   , 0.0f  },
                   { {0,2,2.5}    , 1.0f  },
@@ -839,8 +856,7 @@ void scene_model::set_data_plane_animation(std::map<std::string, GLuint>& shader
 }
 
 void scene_model::set_creature_rotation(float t_creature){
-    /***************************************************/
-    /*****************Begin Animation*******************/
+    
     const int idx = index_at_value(t_creature, keyframes_creature);
 
     // Assume a closed curve trajectory
@@ -857,12 +873,6 @@ void scene_model::set_creature_rotation(float t_creature){
     const vec3 p = cardinal_spline_interpolation(t_creature, t0, t1, t2, t3, p0, p1, p2, p3, 1.0);
     const vec3 p_der = cardinal_spline_interpolation_der(t_creature, t0, t1, t2, t3, p0, p1, p2, p3, 1.0);
     // Store current trajectory of point p
-
-    /** *************************************************************  **/
-    /** Compute the (animated) transformations applied to the elements **/
-    /** *************************************************************  **/
-
-    // The body oscillate along the z direction
     creature["bigbody"].transform.translation = p;
     creature["bigbody"].transform.rotation = rotation_between_vector_mat3({ 0,-1,0 }, p_der)*rotation_from_axis_angle_mat3({ 1,0,0 }, 1);  //make it to z vertical orientation
     // Rotation of the shoulder around the y axis
@@ -894,8 +904,7 @@ void scene_model::set_creature_rotation(float t_creature){
 }
 
 void scene_model::set_plane_rotation(float t_creature) {
-    /***************************************************/
-    /*****************Begin Animation*******************/
+   
     const int idx = index_at_value(t_creature, keyframes_plane);
 
     // Assume a closed curve trajectory
@@ -912,18 +921,13 @@ void scene_model::set_plane_rotation(float t_creature) {
     const vec3 p = cardinal_spline_interpolation(t_creature, t0, t1, t2, t3, p0, p1, p2, p3, 1.0);
     const vec3 p_der = cardinal_spline_interpolation_der(t_creature, t0, t1, t2, t3, p0, p1, p2, p3, 1.0);
     // Store current trajectory of point p
-
-    /** *************************************************************  **/
-    /** Compute the (animated) transformations applied to the elements **/
-    /** *************************************************************  **/
-
-    // The body oscillate along the z direction
     plane["bigbody"].transform.translation = p;
     plane["bigbody"].transform.rotation = rotation_between_vector_mat3({ 0,0,1 }, p_der);
-    plane.update_local_to_global_coordinates();
     
+    plane.update_local_to_global_coordinates();
+
      // Emission of new particle if needed
-    const bool is_new_particle = timer.event;
+    const bool is_new_particle = timer_missle.event;
     if( is_new_particle )
     {
         particle_structure new_particle;
@@ -956,17 +960,6 @@ void scene_model::set_gui() {
         update_box();
         update_fish();
     }
-
-     // Can set the speed of the animation
-    float scale_min = 0.05f;
-    float scale_max = 2.0f;
-    ImGui::SliderScalar("Time scale", ImGuiDataType_Float, &timer.scale, &scale_min, &scale_max, "%.2f s");
-
-    // Start and stop animation
-    if (ImGui::Button("Stop"))
-        timer.stop();
-    if (ImGui::Button("Start"))
-        timer.start();
 }
 
 
