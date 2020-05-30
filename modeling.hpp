@@ -79,9 +79,9 @@ struct scene_model : scene_base
 
     void set_creature_rotation(float t_creature);
     void set_data_creature_animation(std::map<std::string, GLuint>& shaders);
-    void set_plane_rotation(float t_creature);
+    const vcl::vec3 set_plane_rotation(float t_creature);  //return the oriantation of the plane, will be used in set_missle_animation
     void set_data_plane_animation(std::map<std::string, GLuint>& shaders);
-    
+    void set_missle_animation(const vcl::vec3& p_der);
 
     // Data (p_i,t_i)
 

@@ -238,37 +238,8 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
     update_fish();
     
     set_creature_rotation(t_creature);
-    set_plane_rotation(t_plane);
-
-    const float dt = timer_missle.update();
-
-    // Evolve position of particles
-    const vec3 g = {0.0f,0.0f,-9.81f};
-    for(particle_structure& particle : particles)
-    {
-        const float m = 0.01f; // particle mass
-
-        vec3& p1 = particle.p;
-        vec3& v1 = particle.v;
-
-        const vec3 F = m*g;
-
-        // Numerical integration
-        v1 = v1 + dt*F/m;
-        p1 = p1 + dt*v1;
-    }
-
-    // Remove particles that are too low
-    for (auto it = particles.begin(); it != particles.end();)
-        if (it->p.z < -1)
-            it = particles.erase(it);
-        else it++;
-
-    // Display particles
-    for(particle_structure& particle : particles)
-    {
-        missle.uniform.transform.translation = particle.p;
-    }
+    const vec3 p_der = set_plane_rotation(t_plane);
+    set_missle_animation(p_der);
 
     draw(missle, scene.camera, shaders["mesh"]);
 
@@ -634,7 +605,6 @@ mesh create_missle(const float r, const float length) {
     m.push_back(create_cylinder(r, length));
     m.push_back(create_cone(r, -length / 7, 0));
     m.fill_color_uniform(vec3(0.1, 0.1, 0.1));
-
     return m;
 }
 
@@ -903,7 +873,7 @@ void scene_model::set_creature_rotation(float t_creature){
     creature.update_local_to_global_coordinates();
 }
 
-void scene_model::set_plane_rotation(float t_creature) {
+const vec3 scene_model::set_plane_rotation(float t_creature) {
    
     const int idx = index_at_value(t_creature, keyframes_plane);
 
@@ -937,6 +907,42 @@ void scene_model::set_plane_rotation(float t_creature) {
         
         particles.push_back({p0,v0});
     }
+
+    return p_der;
+}
+
+void scene_model::set_missle_animation(const vec3& p_der){
+    const float dt = timer_missle.update();
+
+    // Evolve position of particles
+    const vec3 g = { 0.0f,0.0f,-9.81f };
+    for (particle_structure& particle : particles)
+    {
+        const float m = 0.01f; // particle mass
+
+        vec3& p1 = particle.p;
+        vec3& v1 = particle.v;
+
+        const vec3 F = m * g;
+
+        // Numerical integration
+        v1 = v1 + dt * F / m;
+        p1 = p1 + dt * v1;
+    }
+
+    // Remove particles that are too low
+    for (auto it = particles.begin(); it != particles.end();)
+        if (it->p.z < -1)
+            it = particles.erase(it);
+        else it++;
+
+    // Display particles
+    for (particle_structure& particle : particles)
+    {
+        missle.uniform.transform.translation = particle.p;
+    }
+
+    missle.uniform.transform.rotation = rotation_between_vector_mat3({ 0,0,-1 }, p_der);
 }
 
 void scene_model::set_gui() {
