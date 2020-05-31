@@ -13,9 +13,9 @@ static size_t index_at_value(float t, const vcl::buffer<vec3t>& v);
 static vec3 cardinal_spline_interpolation(float t, float t0, float t1, float t2, float t3, const vec3& p0, const vec3& p1, const vec3& p2, const vec3& p3, float K);
 static vec3 cardinal_spline_interpolation_der(float t, float t0, float t1, float t2, float t3, const vec3& p0, const vec3& p1, const vec3& p2, const vec3& p3, float K);
 
-float evaluate_terrain_z(float u, float v);
+
+
 float evaluate_perlin_terrain_z(float u, float v, const gui_scene_structure& gui_scene);
-vec3 evaluate_terrain(float u, float v);
 vec3 evaluate_perlin_terrain(float u, float v, const gui_scene_structure& gui_scene);
 mesh create_terrain(const gui_scene_structure& gui_scene);
 vec3 evaluate_perlin_island(float u, float v, const gui_scene_structure& gui_scene);
@@ -30,25 +30,28 @@ mesh create_sky(float b);
 hierarchy_mesh_drawable create_creature();
 hierarchy_mesh_drawable create_plane();
 
+
+
 /** This function is called before the beginning of the animation loop
     It is used to initialize all part-specific data */
 void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& ){
+    
     update_terrain();
     update_island();
 
-    //Create moving creature
+    // Create moving creature
     creature = create_creature();
     creature.set_shader_for_all_elements(shaders["mesh"]);
 
-    //Create moving plane
+    // Create moving plane
     plane = create_plane();
     plane.set_shader_for_all_elements(shaders["mesh"]);
-    
-    //Create boat
+     
+    // Create boat
     boat = create_boat(5.f, 2.f, 1.f);
     boat.uniform.shading = { 1,0,0 };
 
-    //Create flag
+    // Create flag
     flag = create_flag(4.f, 4.f);
     flag.uniform.shading = { 1,0,0 };
 
@@ -56,7 +59,24 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
     missle = create_missle(0.1f, 1.0f);
     missle.uniform.shading = {1,0,0};
 
-    //Fill in fish position
+    // Create fish
+    fish = create_fish(0.2f, 0.4f);
+    fish.uniform.shading = { 1,0,0 }; // Set pure ambiant component (no diffuse, no specular) - allow to only see the color of the texture
+    
+    // Create box 
+    const vec3 box_col = { 0.0f, 0.85f, 0.5f };
+    const vec3 cylin_col = { 0.87f, 0.72f, 0.52f };
+    box = create_box(0.1f, 0.4f, 1.0f);
+    box.uniform.shading.specular = 0.0f;
+    
+    // Create skybox
+    sky = mesh_drawable(create_sky(50));
+    sky.uniform.shading = { 1,0,0 };
+    sky.uniform.color = { 1.0f,1.0f,1.0f };
+    sky.uniform.transform.translation = vec3(0, 0, -25.0);
+
+
+    // Fill in fish position
     for (int i = 0; i < N_fish; ++i) {
         float u = rand_interval(0, 1);
         float v = rand_interval(0, 1);
@@ -64,14 +84,7 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
         fish_position.push_back(pos);
     }
 
-    //create fish
-    fish = create_fish(0.2f, 0.4f);
-    fish.uniform.shading = { 1,0,0 }; // set pure ambiant component (no diffuse, no specular) - allow to only see the color of the texture
-
-    // Load a texture (with transparent background)
-    
-
-    //Fill in box position
+    // Fill in box position
     for (int i = 0; i < N_box; ++i) {
         float u = rand_interval(0, 1);
         float v = rand_interval(0, 1);
@@ -79,14 +92,7 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
         box_position.push_back(pos);
     }
 
-    //Create box 
-    const vec3 box_col = { 0.0f, 0.85f, 0.5f };
-    const vec3 cylin_col = { 0.87f, 0.72f, 0.52f };
-    box = create_box(0.1f, 0.4f, 1.0f);
-    box.uniform.shading.specular = 0.0f;
-
     
-
     // Load a texture image on GPU and stores its ID
     texture_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/sea2.png"));
     island_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/island.png"), GL_REPEAT, GL_REPEAT);
@@ -94,8 +100,11 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
     boat_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/boat.png"), GL_REPEAT, GL_REPEAT);
     flag_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/flag.png"), GL_REPEAT, GL_REPEAT);
     fish_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/fish.png"), GL_REPEAT, GL_REPEAT);
-    skybox_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/sky.png"));
-    //set different timers
+    skybox_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/skybox.png"));
+    metal_id = create_texture_gpu(image_load_png("scenes/3D_graphics/02_texture/assets/metal2.png"), GL_REPEAT, GL_REPEAT);
+
+    
+    // Set different timers
     timer_scaling.t_min = 1;
     timer_scaling.t_max = 100;
     timer_scaling.t = timer_scaling.t_min;
@@ -104,31 +113,25 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
     timer_height.t = timer_height.t_min;
     timer_missle.periodic_event_time_step = 1.2f;
 
+    
+    // Set animation of creature/plane
     set_data_creature_animation(shaders);
     set_data_plane_animation(shaders);
-
-    //Create skybox
-    
-    sky = mesh_drawable(create_sky(50));
-    sky.uniform.shading = { 1,0,0 };
-    sky.uniform.color = { 1.0f,1.0f,1.0f };
-    sky.uniform.transform.translation = vec3(0, 0, -25.0);
 
 
     // Setup initial camera mode and position
     scene.camera.camera_type = camera_control_spherical_coordinates;
     scene.camera.scale = 15.0f;
-    scene.camera.apply_rotation(0,0,1.0f,1.2f);
-
-    
+    scene.camera.apply_rotation(0,0,3.5f,1.2f);
 }
 
 
 
 /** This function is called at each frame of the animation loop.
     It is used to compute time-varying argument and perform data data drawing */
-void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& )
-{
+void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& ) {
+
+    // Update Timer
     timer_scaling.update();
     const float t_scaling = timer_scaling.t/10;
     gui_scene.scaling = t_scaling;
@@ -145,21 +148,25 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
 
     set_gui();
 
+
+    // Draw terrain
     glEnable( GL_POLYGON_OFFSET_FILL ); // avoids z-fighting when displaying wireframe
-
-    // Display terrain
     // Before displaying a textured surface: bind the associated texture id
+    // After the surface is displayed it is safe to set the texture id to a white image
+    // Avoids to use the previous texture for another object
     glBindTexture(GL_TEXTURE_2D, texture_id);
-
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
     glPolygonOffset( 1.0, 1.0 );
     draw(terrain, scene.camera, shaders["mesh"]);
-    
+    glBindTexture(GL_TEXTURE_2D, scene.texture_white);
+
+    // Draw Island
     glBindTexture(GL_TEXTURE_2D, island_id);
     draw(island, scene.camera, shaders["mesh"]);
     glBindTexture(GL_TEXTURE_2D, scene.texture_white);
 
+    // Draw Boat
     glBindTexture(GL_TEXTURE_2D, boat_id);
     boat.uniform.transform.translation = vec3{-6,-6,0};
     mat3 R_boat = rotation_from_axis_angle_mat3({0,1,0}, 3.14f/6.0f);
@@ -167,6 +174,7 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
     draw(boat, scene.camera, shaders["mesh"]);
     glBindTexture(GL_TEXTURE_2D, scene.texture_white);
 
+    // Draw Floating Box
     glBindTexture(GL_TEXTURE_2D, box_id);
     for (int i = 0; i < N_box; ++i) {
         box.uniform.transform.translation = box_position[i];
@@ -174,8 +182,8 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
     }
     glBindTexture(GL_TEXTURE_2D, scene.texture_white);
     
+    // Draw Flag
     glBindTexture(GL_TEXTURE_2D, flag_id);
-    
     flag.uniform.transform.rotation = R_boat;
     flag.uniform.transform.translation = vec3{-6,-6,0};
     draw(flag, scene.camera, shaders["mesh"]);
@@ -186,26 +194,15 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
     flag.uniform.transform.translation = vec3{ -5,-6.3,-1 };
     draw(flag, scene.camera, shaders["mesh"]);
     glBindTexture(GL_TEXTURE_2D, scene.texture_white);
-
-    // After the surface is displayed it is safe to set the texture id to a white image
-    //  Avoids to use the previous texture for another object
     
-    // Display skybox
+    // Draw skybox
     glBindTexture(GL_TEXTURE_2D, skybox_id);
     draw(sky, scene.camera, shaders["mesh"]);
     glBindTexture(GL_TEXTURE_2D, scene.texture_white);
-
-    if( gui_scene.wireframe ) { // wireframe if asked from the GUI
-        glPolygonOffset( 1.0, 1.0 );
-        draw(terrain, scene.camera, shaders["wireframe"]);
-        for (int i = 0; i < N_box; ++i) {
-            box.uniform.transform.translation = box_position[i];
-            draw(box, scene.camera, shaders["mesh"]);
-        }
-    }
-
+    
+    // Draw Fish
     // Enable use of alpha component as color blending for transparent elements
-    //  new color = previous color + (1-alpha) current color
+    // new color = previous color + (1-alpha) current color
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -217,38 +214,67 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
     glBindTexture(GL_TEXTURE_2D, fish_id);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // avoids sampling artifacts
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // avoids sampling artifacts
-
     fish.uniform.transform.rotation = scene.camera.orientation;
     for (int i = 0; i < N_fish; ++i) {
         fish.uniform.transform.translation = fish_position[i];
         draw(fish, scene.camera, shaders["mesh"]);
     }
-    if (gui_scene.wireframe)
-        for (int i = 0; i < N_fish; ++i) {
-            fish.uniform.transform.translation = fish_position[i];
-            draw(fish, scene.camera, shaders["mesh"]);
-        }
     glBindTexture(GL_TEXTURE_2D, scene.texture_white);
 
+
+    // Update Position with wave
     update_terrain();
     update_box();
     update_fish();
     
+    // Set animation of creature/plane/missle
     set_creature_rotation(t_creature);
     const vec3 p_der = set_plane_rotation(t_plane);
     set_missle_animation(p_der);
 
-    draw(missle, scene.camera, shaders["mesh"]);
-
+    //Draw creature/plane/missle
+    glBindTexture(GL_TEXTURE_2D, metal_id);
     draw(creature, scene.camera, shaders["mesh"]);
     draw(plane, scene.camera, shaders["mesh"]);
-    
+    draw(missle, scene.camera, shaders["mesh"]);
+    glBindTexture(GL_TEXTURE_2D, scene.texture_white);
 
+    // Finally
+    // Wireframe if asked from the GUI
+    if (gui_scene.wireframe) {
+        glPolygonOffset(1.0, 1.0);
+        draw(terrain, scene.camera, shaders["wireframe"]);
+        draw(island, scene.camera, shaders["wireframe"]);
+        draw(boat, scene.camera, shaders["wireframe"]);
+        flag.uniform.transform.translation = vec3{ -6,-6,0 };
+        draw(flag, scene.camera, shaders["wireframe"]);
+        flag.uniform.transform.translation = vec3{ -5,-6,-1 };
+        draw(flag, scene.camera, shaders["wireframe"]);
+        flag.uniform.transform.translation = vec3{ -6,-6.3,0 };
+        draw(flag, scene.camera, shaders["wireframe"]);
+        flag.uniform.transform.translation = vec3{ -5,-6.3,-1 };
+        draw(flag, scene.camera, shaders["wireframe"]);
+        draw(sky, scene.camera, shaders["wireframe"]);
+        draw(creature, scene.camera, shaders["wireframe"]);
+        draw(plane, scene.camera, shaders["wireframe"]);
+        draw(missle, scene.camera, shaders["wireframe"]);
+        for (int i = 0; i < N_box; ++i) {
+            box.uniform.transform.translation = box_position[i];
+            draw(box, scene.camera, shaders["wireframe"]);
+        }
+        for (int i = 0; i < N_fish; ++i) {
+            fish.uniform.transform.translation = fish_position[i];
+            draw(fish, scene.camera, shaders["wireframe"]);
+        }
+    }
+    
+        
     glDepthMask(true);
 }
 
-void scene_model::update_terrain()
-{
+
+void scene_model::update_terrain() {
+
     // Clear memory in case of pre-existing terrain
     terrain.clear();
 
@@ -258,7 +284,9 @@ void scene_model::update_terrain()
     terrain.uniform.shading.specular = 0.0f;
 }
 
+
 void scene_model::update_island() {
+
     // Clear memory in case of pre-existing terrain
     island.clear();
 
@@ -267,6 +295,7 @@ void scene_model::update_island() {
     island.uniform.color = { 1.0f, 1.0f, 1.0f };
     island.uniform.shading.specular = 0.0f;
 }
+
 
 void scene_model::update_box() {
     
@@ -288,33 +317,11 @@ void scene_model::update_fish() {
         fish_position[i] = pos;
     }
 }
-// Evaluate height of the terrain for any (u,v) \in [0,1]
-float evaluate_terrain_z(float u, float v)
-{
-    const int N = 4;
-    const vec2 u0[4] = { {0.0f,0.0f},{0.5f,0.5f},{0.2f,0.7f},{0.8f,0.7f} };
-    const float h[4] = { 3.0f,-1.5f,1.0f,2.0f };
-    const float sigma[4] = { 0.5f,0.15f,0.2f,0.2f };
-    float z = 0;
-    for (int i = 0; i < N; ++i) {
-        float d = norm(vec2(u, v) - u0[i]) / sigma[i];
-        z += h[i] * std::exp(-d * d);
-    }
-    return z;
-}
 
-// Evaluate 3D position of the terrain for any (u,v) \in [0,1]
-vec3 evaluate_terrain(float u, float v)
-{
-    const float x = 20*(u-0.5f);
-    const float y = 20*(v-0.5f);
-    const float z = evaluate_terrain_z(u,v);
-
-    return {x,y,z};
-}
 
 float evaluate_perlin_terrain_z(float u, float v, const gui_scene_structure& gui_scene) {
-    // get gui parameters
+
+    // Get gui parameters
     const float scaling = gui_scene.scaling;
     const int octave = gui_scene.octave;
     const float persistency = gui_scene.persistency;
@@ -326,15 +333,19 @@ float evaluate_perlin_terrain_z(float u, float v, const gui_scene_structure& gui
     return z;
 }
 
+
 vec3 evaluate_perlin_terrain(float u, float v, const gui_scene_structure& gui_scene) {
+
     const float x = 20 * (u - 0.5f);
     const float y = 20 * (v - 0.5f);
     const float z = evaluate_perlin_terrain_z(u, v,gui_scene);
     return{ x,y,z };
 }
+
+
 // Generate terrain mesh
-mesh create_terrain(const gui_scene_structure& gui_scene)
-{
+mesh create_terrain(const gui_scene_structure& gui_scene) {
+
     // Number of samples of the terrain is N x N
     const size_t N = 100;
 
@@ -350,7 +361,6 @@ mesh create_terrain(const gui_scene_structure& gui_scene)
             const float v = kv/(N-1.0f);
 
             // Compute coordinates
-            //terrain.position[kv+N*ku] = evaluate_terrain(u,v);
             terrain.position[kv + N * ku] = evaluate_perlin_terrain(u,v,gui_scene);
             terrain.texture_uv[kv + N * ku] = {5*ku/(float)N,5*kv/(float)N};
          
@@ -359,7 +369,7 @@ mesh create_terrain(const gui_scene_structure& gui_scene)
 
 
     // Generate triangle organization
-    //  Parametric surface with uniform grid sampling: generate 2 triangles for each grid cell
+    // Parametric surface with uniform grid sampling: generate 2 triangles for each grid cell
     const unsigned int Ns = N;
     for(unsigned int ku=0; ku<Ns-1; ++ku) {
         for(unsigned int kv=0; kv<Ns-1; ++kv) {
@@ -376,8 +386,10 @@ mesh create_terrain(const gui_scene_structure& gui_scene)
     return terrain;
 }
 
+
 vec3 evaluate_perlin_island(float u, float v, const gui_scene_structure& gui_scene) {
-    // get gui parameters
+
+    // Get gui parameters
     const float scaling = gui_scene.scaling;
     const int octave = gui_scene.octave;
     const float persistency = gui_scene.persistency;
@@ -390,7 +402,9 @@ vec3 evaluate_perlin_island(float u, float v, const gui_scene_structure& gui_sce
     return{ x,y,z };
 }
 
+
 mesh create_island(const gui_scene_structure& gui_scene) {
+
     // Number of samples of the terrain is N x N
     const size_t N = 100;
 
@@ -412,7 +426,7 @@ mesh create_island(const gui_scene_structure& gui_scene) {
     }
 
     // Generate triangle organization
-    //  Parametric surface with uniform grid sampling: generate 2 triangles for each grid cell
+    // Parametric surface with uniform grid sampling: generate 2 triangles for each grid cell
     const unsigned int Ns = N;
     for (unsigned int ku = 0; ku < Ns - 1; ++ku) {
         for (unsigned int kv = 0; kv < Ns - 1; ++kv) {
@@ -429,7 +443,9 @@ mesh create_island(const gui_scene_structure& gui_scene) {
     return island;
 }
 
+
 mesh create_box(float hight, float width, float length) {
+
     mesh m;
 
     m.position.push_back(vec3(length / 2, width / 2, hight / 2));
@@ -464,8 +480,9 @@ mesh create_box(float hight, float width, float length) {
     return m;
 }
 
-mesh create_boat(float length, float width, float height)
-{
+
+mesh create_boat(float length, float width, float height) {
+
     mesh m;
 
     m.position.push_back(vec3(length / 2, width / 2 * 1.3, height));
@@ -495,15 +512,17 @@ mesh create_boat(float length, float width, float height)
     m.connectivity.push_back({ 1,5,9 });
     m.connectivity.push_back({ 5,6,9 });
 
-    m.texture_uv = { {0,2}, {5,2}, {5,0}, {0,0},
-    {0,0}, {5,0}, {5,2}, {0,2},
-    {1,1}, {1,1}
+    m.texture_uv = { 
+        {0,2}, {5,2}, {5,0}, {0,0},
+        {0,0}, {5,0}, {5,2}, {0,2},
+        {1,1}, {1,1}
     };
     return m;
 }
 
-mesh create_flag(float length, float flag_h)
-{
+
+mesh create_flag(float length, float flag_h) {
+
     mesh flag;
     flag.position.push_back(vec3(0, 0, 0));
     flag.position.push_back(vec3(length / 2, 0, flag_h / 2));
@@ -516,7 +535,9 @@ mesh create_flag(float length, float flag_h)
 
 }
 
+
 mesh create_cylinder(float radius, float height) {
+
     mesh m;
 
     // Number of samples
@@ -546,14 +567,15 @@ mesh create_cylinder(float radius, float height) {
     return m;
 }
 
+
 mesh create_cone(float radius, float height, float z_offset) {
+
     mesh m;
 
     // Number of samples
     const size_t N = 20;
 
     // Geometry
-    
     for (size_t k = 0; k < N; ++k) {
         const float u = k / float(N);
         const vec3 p = { radius * std::cos(2 * 3.14f * u), radius * std::sin(2 * 3.14f * u), z_offset };
@@ -580,7 +602,9 @@ mesh create_cone(float radius, float height, float z_offset) {
     return m;
 }
 
+
 mesh create_missle(const float r, const float length) {
+
     mesh m;
     m.push_back(create_cylinder(r, length));
     m.push_back(create_cone(r, -length / 7, 0));
@@ -588,7 +612,9 @@ mesh create_missle(const float r, const float length) {
     return m;
 }
 
+
 mesh create_fish(float length, float width) {
+
     // Create a quad with (u,v)-texture coordinates
     mesh m;
     m.position = { {-length,0,0}, { length,0,0}, { length, width,0}, {-length, width,0} };
@@ -597,51 +623,55 @@ mesh create_fish(float length, float width) {
     return m;
 }
 
+
 hierarchy_mesh_drawable create_creature() {
+
     hierarchy_mesh_drawable hierarchy;
-    const float radius_body = 0.25f;
+    const float radius_body = 0.3f;
     const float radius_arm = 0.05f;
     const float length_arm = 0.2f;
     const float radius_leg = 0.1f;
     const float length_leg = 0.5f;
+
     // The geometry of the body is a sphere
     mesh_drawable body = mesh_drawable(mesh_primitive_sphere(radius_body, { 0,0,0 }, 40, 40));
     mesh_drawable bigbody = mesh_drawable(mesh_primitive_sphere(2 * radius_body, { 0,0,0 }, 40, 40));
-    bigbody.uniform.color = { 0.55f,0.09f,0.09f };
+    bigbody.uniform.color = { 0.412f, 0.412f, 0.412f };
 
-    // Geometry of the eyes: black spheres
-    mesh_drawable eye = mesh_drawable(mesh_primitive_sphere(0.05f, { 0,0,0 }, 20, 20));
-    eye.uniform.color = { 0,0,0 };
+    // Geometry of the eyes: spheres
+    mesh_drawable eye = mesh_drawable(mesh_primitive_sphere(0.1f, { 0,0,0 }, 20, 20));
+    eye.uniform.color = { 0.55f,0.09f,0.09f };
 
-    mesh_drawable mouth = mesh_drawable(mesh_primitive_cone());
-    mouth.uniform.color = { 0.2f,0.3f,0.0f };
+    mesh_drawable mouth = mesh_drawable(mesh_primitive_cone(0.15f));
+    mouth.uniform.color = { 0,0,0 };
 
-    // Shoulder part and arm are displayed as cylinder
-    mesh_drawable shoulder = mesh_primitive_quad({ 0,0,0 }, { length_leg,0,0 });
-    mesh_drawable arm = mesh_primitive_torus(8 * radius_arm, radius_arm, { 0,0,0 }, { 0,0,length_arm});
-    shoulder.uniform.color = { 0.0f,0.3f,0.4f };
-    arm.uniform.color = { 0.76f,0.1f,0.0f };
+    // Shoulder and arm
+    mesh_drawable shoulder = mesh_primitive_cone(radius_arm,{ 0,0,0 }, { 0,0,length_arm });
+    mesh_drawable arm = mesh_primitive_torus(10 * radius_arm, radius_arm, { 0,0,0 }, { 0,0,length_arm});
+    shoulder.uniform.color = { 0.878f, 1.000f, 1.000f };
+    arm.uniform.color = { 0,0,0 };
     
     // An elbow displayed as a sphere
     mesh_drawable elbow = mesh_primitive_sphere(0.055f);
+    elbow.uniform.color ={ 1.0f, 1.0f, 1.0f };
 
     mesh_drawable leg = mesh_primitive_cylinder(radius_leg, { 0,0,0 }, { -length_leg, 0, 0 });
-    leg.uniform.color = { 1.0f,0.49f,0.0f };
-    mesh_drawable leg2 = mesh_primitive_cylinder(radius_leg, { 0,0,0 }, { -3 * length_leg, -3 * length_leg, 0 });
-    leg2.uniform.color = { 1.0f,0.49f,0.0f };
+    leg.uniform.color = { 0.753f,0.753f,0.753f };
+    mesh_drawable leg2 = mesh_primitive_cone(radius_leg, { 0,0,0 }, { -3 * length_leg, -3 * length_leg, 0 });
+    leg2.uniform.color = { 0.753f,0.753f,0.753f };
     mesh_drawable knee = mesh_primitive_sphere(0.15f);
-    knee.uniform.color = { 0.55f,0.47f,0.14f };
+    knee.uniform.color = { 0.439f, 0.502f, 0.565f };
     
     // Build the hierarchy:
     // Syntax to add element
-    //   hierarchy.add(visual_element, element_name, parent_name, (opt)[translation, rotation])
+    // hierarchy.add(visual_element, element_name, parent_name, (opt)[translation, rotation])
     hierarchy.add(bigbody, "bigbody");
-    hierarchy.add(body, "body", "bigbody", 2 * radius_body * vec3(1 / 3.0f, 1 / 2.0f, 1 / 1.5f));
+    hierarchy.add(body, "body", "bigbody", 2 * radius_body * vec3(0.0f, 1 / 2.0f, 1 / 1.5f));
 
     // Eyes positions are set with respect to some ratio of the
     hierarchy.add(eye, "eye_left", "body", radius_body * vec3(1 / 3.0f, 1 / 2.0f, 1 / 1.5f));
     hierarchy.add(eye, "eye_right", "body", radius_body * vec3(-1 / 3.0f, 1 / 2.0f, 1 / 1.5f));
-    hierarchy.add(mouth, "mouth", "body", radius_body * vec3(0.0f, 0.1f, 0.1f));
+    hierarchy.add(mouth, "mouth", "body", radius_body * vec3(0.0f, 0.0f, 0.1f));
 
     // Set the left part of the body arm: shoulder-elbow-arm
     hierarchy.add(shoulder, "shoulder_left", "bigbody", { -2 * radius_body + 0.05f,0,0 }); // extremity of the spherical body
@@ -667,32 +697,45 @@ hierarchy_mesh_drawable create_creature() {
     return hierarchy;
 }
 
+
 hierarchy_mesh_drawable create_plane() {
+
     hierarchy_mesh_drawable hierarchy;
     const float radius_body = 1.2f;
     const float height_body = 2.4f;
     const float height_wing = 0.9f;
     mesh_drawable bigbody = mesh_drawable(create_cone(radius_body, height_body, 0));
     bigbody.uniform.transform.scaling_axis = { 0.2f,1.0f,1.0f };
-    bigbody.uniform.color = { 0.5f,0.3f,0.1f };
+    bigbody.uniform.color = { 0.502f, 0.502f, 0.502f };
+    //bigbody.uniform.shading = { 0,1,0 };
+
     mesh_drawable head = mesh_drawable(create_cone(radius_body / 2.0f, height_body / 2.0f, 2 / 3.0f * height_body));
     head.uniform.transform.scaling_axis = { 0.2f,1.0f,1.0f };
+    head.uniform.color = { 0.753f, 0.753f, 0.753f };
+    //head.uniform.shading = { 1,0,0 };
 
-    mesh wing1;
-    wing1.position = { vec3(0,radius_body / 2,0), vec3(0,radius_body / 2,height_body / 2), vec3(height_wing,radius_body / 2,0) };         // 3D-coordinates
-    wing1.connectivity = { {0,1,2} };
-    mesh wing2;
-    wing2.position = { vec3(0,-radius_body / 2,0), vec3(0,-radius_body / 2,height_body / 2), vec3(height_wing,-radius_body / 2,0) };         // 3D-coordinates
-    wing2.connectivity = { {0,1,2} };
+    mesh wing;
+    wing.position = { vec3(0,radius_body / 2,0), vec3(0,radius_body / 2,height_body / 2), vec3(height_wing,radius_body / 2,0) };         // 3D-coordinates
+    wing.connectivity = { {0,1,2} };
+    mesh_drawable wing1 = mesh_drawable(wing);
+    wing1.uniform.color = { 0.184f, 0.310f, 0.310f };
+    
+    
+    wing.position = { vec3(0,-radius_body / 2,0), vec3(0,-radius_body / 2,height_body / 2), vec3(height_wing,-radius_body / 2,0) };         // 3D-coordinates
+    mesh_drawable wing2 = mesh_drawable(wing);
+    wing2.uniform.color = { 0.184f, 0.310f, 0.310f };
 
     hierarchy.add(bigbody, "bigbody");
     hierarchy.add(head, "head", "bigbody");
     hierarchy.add(wing1, "wing1", "bigbody");
     hierarchy.add(wing2, "wing2", "bigbody");
-
+    
     return hierarchy;
 }
+
+
 mesh create_sky(float b) {
+    
     mesh sky;
 
     // Geometry (adding points)
@@ -745,7 +788,7 @@ mesh create_sky(float b) {
     sky.connectivity.push_back(t11);
     sky.connectivity.push_back(t12);
 
-    // texture covering
+    // Texture covering
     sky.texture_uv = { {0.252,0.66}, {0.252,0.333}, {0.5,0.66}, {0.499,0.335},
     {0.998,0.66}, {0.998,0.335}, {0.75,0.66}, {0.75,0.335},
     {0.252,0.66}, {0.252,0.335}, {0.5,0.66}, {0.499,0.335},
@@ -753,6 +796,7 @@ mesh create_sky(float b) {
     {0.252,0.66}, {0.252,0.335}, {0.499,0.66}, {0.499,0.335},
     {0.252,1.0}, {0.252,0.002}, {0.499,1.0}, {0.499,0.002}
     };
+
     return sky;
 }
 
@@ -760,8 +804,10 @@ mesh create_sky(float b) {
 
 
 void scene_model::set_data_creature_animation(std::map<std::string, GLuint>& shaders){
+    
     // Initial Keyframe data vector of (position, time)
-    keyframes_creature = { { {-10,0,2}   , 0.0f  },
+    keyframes_creature = { 
+                  { {-10,0,2}   , 0.0f  },
                   { {5,-7.5,2} , 10.0f  },
                   { {0,0,2}    , 20.0f  },
                   { {0,5,1.8}    , 25.0f  },
@@ -774,39 +820,43 @@ void scene_model::set_data_creature_animation(std::map<std::string, GLuint>& sha
                   { {5,-7.5,2} , 70.0f },
                   { {-10,-7.5,2}, 80.0f },
     };
-
-    // Set timer bounds
-    // You should adapt these extremal values to the type of interpolation
+    
     timer_creature.t_min = keyframes_creature[1].t;                   // first time of the keyframe
     timer_creature.t_max = keyframes_creature[keyframes_creature.size() - 2].t;  // last time of the keyframe
     timer_creature.t = timer_creature.t_min;
 
-    
     timer_creature.scale = 0.5f;
 }
+
+
 void scene_model::set_data_plane_animation(std::map<std::string, GLuint>& shaders) {
-    keyframes_plane = { { {-5,-5,5}   , 0.0f  },
+    
+    keyframes_plane = { 
+                  { {-5,-5,5}   , 0.0f  },
                   { {0,-7,6}    , 1.0f  },
-                  { {5,-7,6}    , 2.0f  },
+                  { {5,-7,7}    , 2.0f  },
+                  { {5,-7,2}    , 2.5f  },
                   { {7,5,4}    , 3.5f  },
+                  { {7,4,7}    , 4.0f  },
                   { {-3,6.5,7}    , 4.5f  },
                   { {-5,-5,5}   , 5.5f  },
                   { {0,-7,6}    , 6.5f  },
                   { {5,-7,6}    , 7.5f  }
     };
+
     timer_plane.t_min = keyframes_plane[1].t;                   // first time of the keyframe
     timer_plane.t_max = keyframes_plane[keyframes_plane.size() - 2].t;  // last time of the keyframe
     timer_plane.t = timer_plane.t_min;
 
-    timer_plane.scale = 0.5f;
+    timer_plane.scale = 0.7f;
 }
 
-void scene_model::set_creature_rotation(float t_creature){
+
+void scene_model::set_creature_rotation(float t_creature) {
     
-    const int idx = index_at_value(t_creature, keyframes_creature);
+    const long idx = index_at_value(t_creature, keyframes_creature);
 
     // Assume a closed curve trajectory
-
     const float t1 = keyframes_creature[idx].t;
     const float t0 = keyframes_creature[idx - 1].t;
     const float t2 = keyframes_creature[idx + 1].t;
@@ -818,9 +868,11 @@ void scene_model::set_creature_rotation(float t_creature){
 
     const vec3 p = cardinal_spline_interpolation(t_creature, t0, t1, t2, t3, p0, p1, p2, p3, 1.0);
     const vec3 p_der = cardinal_spline_interpolation_der(t_creature, t0, t1, t2, t3, p0, p1, p2, p3, 1.0);
+    
     // Store current trajectory of point p
     creature["bigbody"].transform.translation = p;
     creature["bigbody"].transform.rotation = rotation_between_vector_mat3({ 0,-1,0 }, p_der)*rotation_from_axis_angle_mat3({ 1,0,0 }, 1);  //make it to z vertical orientation
+    
     // Rotation of the shoulder around the y axis
     mat3 const R_shoulder = rotation_from_axis_angle_mat3({ 0,1,0 }, std::sin(2 * 3.14f * (t_creature - 0.4f)));
     // Rotation of the arm around the y axis (delayed with respect to the shoulder)
@@ -846,15 +898,16 @@ void scene_model::set_creature_rotation(float t_creature){
     creature["leg_right"].transform.rotation = Symmetry_leg * R_leg;
     creature["leg2_right"].transform.rotation = R_leg2;
     creature["leg3_right"].transform.rotation = R_leg3;
+
     creature.update_local_to_global_coordinates();
 }
 
+
 const vec3 scene_model::set_plane_rotation(float t_creature) {
    
-    const int idx = index_at_value(t_creature, keyframes_plane);
+    const long idx = index_at_value(t_creature, keyframes_plane);
 
     // Assume a closed curve trajectory
-
     const float t1 = keyframes_plane[idx].t;
     const float t0 = keyframes_plane[idx - 1].t;
     const float t2 = keyframes_plane[idx + 1].t;
@@ -866,18 +919,19 @@ const vec3 scene_model::set_plane_rotation(float t_creature) {
 
     const vec3 p = cardinal_spline_interpolation(t_creature, t0, t1, t2, t3, p0, p1, p2, p3, 1.0);
     const vec3 p_der = cardinal_spline_interpolation_der(t_creature, t0, t1, t2, t3, p0, p1, p2, p3, 1.0);
+    
     // Store current trajectory of point p
     plane["bigbody"].transform.translation = p;
     plane["bigbody"].transform.rotation = rotation_between_vector_mat3({ 0,0,1 }, p_der);
     
     plane.update_local_to_global_coordinates();
 
-     // Emission of new particle if needed
+    // Emission of new particle if needed
     const bool is_new_particle = timer_missle.event;
-    if( is_new_particle )
-    {
+    if( is_new_particle ) {
         particle_structure new_particle;
         const vec3 p0 = p;
+
         // Initial speed is random. (x,z) components are uniformly distributed along a circle.
         const vec3 v0 = p_der;
         
@@ -887,14 +941,15 @@ const vec3 scene_model::set_plane_rotation(float t_creature) {
     return p_der;
 }
 
-void scene_model::set_missle_animation(const vec3& p_der){
+
+void scene_model::set_missle_animation(const vec3& p_der) {
+
     const float dt = timer_missle.update();
 
     // Evolve position of particles
     const vec3 g = { 0.0f,0.0f,-9.81f };
-    for (particle_structure& particle : particles)
-    {
-        const float m = 0.01f; // particle mass
+    for (particle_structure& particle : particles) {
+        const float m = 0.01f; // Particle mass
 
         vec3& p1 = particle.p;
         vec3& v1 = particle.v;
@@ -907,23 +962,23 @@ void scene_model::set_missle_animation(const vec3& p_der){
     }
 
     // Remove particles that are too low
-    for (auto it = particles.begin(); it != particles.end();)
+    for (auto it = particles.begin(); it != particles.end(); )
         if (it->p.z < -1)
             it = particles.erase(it);
         else it++;
 
     // Display particles
-    for (particle_structure& particle : particles)
-    {
+    for (particle_structure& particle : particles){
         missle.uniform.transform.translation = particle.p;
     }
 
     missle.uniform.transform.rotation = rotation_between_vector_mat3({ 0,0,-1 }, p_der);
 }
 
-void scene_model::set_gui() {
-    ImGui::Checkbox("Wireframe", &gui_scene.wireframe);
 
+void scene_model::set_gui() {
+
+    ImGui::Checkbox("Wireframe", &gui_scene.wireframe);
     ImGui::Separator();
     ImGui::Text("Perlin parameters");
 
@@ -956,6 +1011,7 @@ static size_t index_at_value(float t, vcl::buffer<vec3t> const& v) {
     return k;
 }
 
+
 static vec3 cardinal_spline_interpolation(float t, float t0, float t1, float t2, float t3, const vec3& p0, const vec3& p1, const vec3& p2, const vec3& p3, float K) {
     const vec3 d1 = 2 * K / (t2 - t0) * (p2 - p0);
     const vec3 d2 = 2 * K / (t3 - t1) * (p3 - p1);
@@ -965,6 +1021,7 @@ static vec3 cardinal_spline_interpolation(float t, float t0, float t1, float t2,
     const vec3 p = (2 * s3 - 3 * s2 + 1) * p1 + (s3 - 2 * s2 + s) * d1 + (-2 * s3 + 3 * s2) * p2 + (s3 - s2) * d2;
     return p;
 }
+
 
 static vec3 cardinal_spline_interpolation_der(float t, float t0, float t1, float t2, float t3, const vec3& p0, const vec3& p1, const vec3& p2, const vec3& p3, float K) {
     const vec3 d1 = 2 * K / (t2 - t0) * (p2 - p0);

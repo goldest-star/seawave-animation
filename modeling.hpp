@@ -10,8 +10,7 @@ struct vec3t {
 };
 
 // Stores some parameters that can be set from the GUI
-struct gui_scene_structure
-{
+struct gui_scene_structure {
     bool wireframe = false;
     bool display_keyframe = true;
     bool display_polygon = true;
@@ -21,14 +20,12 @@ struct gui_scene_structure
     float persistency = 0.4f;
 };
 
-struct particle_structure
-{
+struct particle_structure {
     vcl::vec3 p; // Position
     vcl::vec3 v; // Speed
 };
 
-struct scene_model : scene_base
-{
+struct scene_model : scene_base {
 
     /** A part must define two functions that are called from the main function:
      * setup_data: called once to setup data before starting the animation loop
@@ -46,7 +43,7 @@ struct scene_model : scene_base
 
     void set_gui();
 
-    // visual representation of a surface
+    // Different mesh object 
     vcl::mesh_drawable terrain;
     vcl::mesh_drawable island;
     std::vector<vcl::vec3> box_position;
@@ -58,11 +55,12 @@ struct scene_model : scene_base
     vcl::mesh_drawable flag;
     vcl::mesh_drawable missle;
 
-    std::list<particle_structure> particles; // Storage of all currently active particles
+    std::list<particle_structure> particles; // Storage of all currently active particles for missle
 
     const int N_box = 30;
     const int N_fish = 30;
 
+    // Texture ID
     GLuint texture_id;
     GLuint fish_id;
     GLuint box_id;
@@ -70,8 +68,9 @@ struct scene_model : scene_base
     GLuint skybox_id;
     GLuint island_id;
     GLuint flag_id;
-    
+    GLuint metal_id;
 
+    // Update position function
     void update_terrain();
     void update_island();
     void update_box();
@@ -84,15 +83,16 @@ struct scene_model : scene_base
     void set_missle_animation(const vcl::vec3& p_der);
 
     // Data (p_i,t_i)
-
     vcl::buffer<vec3t> keyframes_creature; // Given (position,time)
     vcl::buffer<vec3t> keyframes_plane;
-  
+    
+    // Hierarchy object
     vcl::hierarchy_mesh_drawable creature;
     vcl::hierarchy_mesh_drawable plane;
 
     gui_scene_structure gui_scene;
 
+    // Timer
     vcl::timer_interval timer_scaling;
     vcl::timer_interval timer_height;
     vcl::timer_interval timer_creature;
