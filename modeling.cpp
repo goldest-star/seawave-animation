@@ -24,10 +24,7 @@ mesh create_box(float hight, float width, float length);
 mesh create_boat(float length, float width, float height);
 mesh create_flag(float length, float flag_h);
 mesh create_cylinder(float radius, float height);
-mesh create_cone(float radius, float height, float z_offset);
-mesh create_box_foliage(float radius, float height, float z_offset, float cylinder_height);
-mesh create_box(float cylinder_rad, float cylinder_height, float box_rad, float box_height, float box_z_offset, const vec3& box_col, const vec3& cylin_col);
-mesh create_missle(const float r, const float length);
+mesh create_cone(float radius, float height, float z_offset);mesh create_missle(const float r, const float length);
 mesh create_fish(float length, float width);
 mesh create_sky(float b);
 hierarchy_mesh_drawable create_creature();
@@ -583,23 +580,6 @@ mesh create_cone(float radius, float height, float z_offset) {
     return m;
 }
 
-mesh create_box_foliage(float radius, float height, float z_offset, float cylinder_height) {
-    mesh m = create_cone(radius, height, cylinder_height);
-    m.push_back(create_cone(radius, height, cylinder_height + z_offset));
-    m.push_back(create_cone(radius, height, cylinder_height + 2 * z_offset));
-
-    return m;
-}
-
-mesh create_box(float cylinder_rad, float cylinder_height, float box_rad, float box_height, float box_z_offset, const vec3& box_col, const vec3& cylin_col) {
-    mesh m = create_cylinder(cylinder_rad,cylinder_height);
-    m.fill_color_uniform(cylin_col);
-    mesh n = create_box_foliage(box_rad, box_height, box_z_offset, cylinder_height);
-    n.fill_color_uniform(box_col);
-    m.push_back(n);
-    return m;
-}
-
 mesh create_missle(const float r, const float length) {
     mesh m;
     m.push_back(create_cylinder(r, length));
@@ -689,9 +669,9 @@ hierarchy_mesh_drawable create_creature() {
 
 hierarchy_mesh_drawable create_plane() {
     hierarchy_mesh_drawable hierarchy;
-    const float radius_body = 0.4f;
-    const float height_body = 0.8f;
-    const float height_wing = 0.3f;
+    const float radius_body = 1.2f;
+    const float height_body = 2.4f;
+    const float height_wing = 0.9f;
     mesh_drawable bigbody = mesh_drawable(create_cone(radius_body, height_body, 0));
     bigbody.uniform.transform.scaling_axis = { 0.2f,1.0f,1.0f };
     bigbody.uniform.color = { 0.5f,0.3f,0.1f };
@@ -805,18 +785,14 @@ void scene_model::set_data_creature_animation(std::map<std::string, GLuint>& sha
     timer_creature.scale = 0.5f;
 }
 void scene_model::set_data_plane_animation(std::map<std::string, GLuint>& shaders) {
-    keyframes_plane = { { {-2,2,2.5}   , 0.0f  },
-                  { {0,2,2.5}    , 1.0f  },
-                  { {2,2,2.5}    , 2.0f  },
-                  { {2,4,2.5}    , 2.5f  },
-                  { {4,4,2.5}    , 3.0f  },
-                  { {4,4,3.5}    , 3.5f  },
-                  { {4,0,4}  , 3.75f  },
-                  { {3,-2,3.5} , 4.5f  },
-                  { {3,-2,2.5} , 5.0f  },
-                  { {2,-2,2.5}   , 6.0f  },
-                  { {0,2,2.5} , 7.0f },
-                  { {-2,-1,2.5}, 8.0f },
+    keyframes_plane = { { {-5,-5,5}   , 0.0f  },
+                  { {0,-7,6}    , 1.0f  },
+                  { {5,-7,6}    , 2.0f  },
+                  { {7,5,4}    , 3.5f  },
+                  { {-3,6.5,7}    , 4.5f  },
+                  { {-5,-5,5}   , 5.5f  },
+                  { {0,-7,6}    , 6.5f  },
+                  { {5,-7,6}    , 7.5f  }
     };
     timer_plane.t_min = keyframes_plane[1].t;                   // first time of the keyframe
     timer_plane.t_max = keyframes_plane[keyframes_plane.size() - 2].t;  // last time of the keyframe
