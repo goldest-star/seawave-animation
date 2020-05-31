@@ -99,6 +99,7 @@ struct scene_model : scene_base {
     vcl::timer_interval timer_plane;
     vcl::timer_event timer_missle;
 
+    // Enable back and forth timer
     bool reverse_time_height = false;
     bool reset_time_height = true;
     bool reverse_time_scaling = false;
