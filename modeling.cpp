@@ -132,13 +132,20 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
 void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& ) {
 
     // Update Timer
+    const float eps = 1;
     timer_scaling.update();
+    if (timer_scaling.t >= timer_scaling.t_max - eps && !reverse_time_scaling && reset_time_scaling) reverse_time_scaling = true, reset_time_scaling = false;
+    if (timer_scaling.t >= timer_scaling.t_max - eps && reverse_time_scaling && reset_time_scaling) reverse_time_scaling = false, reset_time_scaling = false;
+    if (timer_scaling.t <= timer_scaling.t_min + eps) reset_time_scaling = true;
     const float t_scaling = timer_scaling.t/10;
-    gui_scene.scaling = t_scaling;
+    gui_scene.scaling = ( (timer_scaling.t >= timer_scaling.t_max - eps) != reverse_time_scaling)? 10.1 - t_scaling : t_scaling;
     
     timer_height.update();
+    if (timer_height.t >= timer_height.t_max - eps && !reverse_time_height && reset_time_height) reverse_time_height = true, reset_time_height = false;
+    if (timer_height.t >= timer_height.t_max - eps && reverse_time_height && reset_time_height) reverse_time_height = false, reset_time_height = false;
+    if (timer_height.t <= timer_height.t_min + eps) reset_time_height = true;
     const float t_height = timer_height.t/200;
-    gui_scene.height = 1.5 - t_height;
+    gui_scene.height = ( (timer_height.t >= timer_height.t_max - eps) != reverse_time_height)? t_height : 1.5 - t_height;
 
     timer_creature.update();
     const float t_creature = timer_creature.t;
@@ -981,6 +988,15 @@ void scene_model::set_gui() {
     ImGui::Checkbox("Wireframe", &gui_scene.wireframe);
     ImGui::Separator();
     ImGui::Text("Perlin parameters");
+
+    float height_min = 0.1f;
+    float height_max = 2.0f;
+    if (ImGui::SliderScalar("Height", ImGuiDataType_Float, &gui_scene.height, &height_min, &height_max)){}
+        
+
+    float scaling_min = 0.1f;
+    float scaling_max = 10.0f;
+    if (ImGui::SliderScalar("(u,v) Scaling", ImGuiDataType_Float, &gui_scene.scaling, &scaling_min, &scaling_max)){}
 
     int octave_min = 1;
     int octave_max = 10;
