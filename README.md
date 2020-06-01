@@ -1,3 +1,11 @@
+## Table of Contents
+- [How to run](#how-to-run)
+- [General description](#hierarchical-organization)
+- [UpwardDrawing presentation](#upwarddrawing-presentation)
+- [Node and NodeSegment presentation](#node-and-nodesegment-presentation)
+- [DirectedGraph presentation](#directedgraph-presentation)
+- [License](#license)
+
 How to run
 ==========
 ```shell
