@@ -219,4 +219,4 @@ This project exists thanks to all the people who contribute.
 
 License
 ==========
-[MIT License](https://github.com/DyeKuu/OpenGL-Seawave-Animation-INF443/master/LICENSE)
+[MIT License](https://github.com/DyeKuu/OpenGL-Seawave-Animation-INF443/blob/master/LICENSE)
