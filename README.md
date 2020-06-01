@@ -1,8 +1,3 @@
----
-author: Yiming Qin Kunhao ZHENG
-title: INF433 Project Report
----
-
 How to run
 ==========
 ```shell
@@ -206,3 +201,9 @@ presented above.
 ![Demo](https://github.com/DyeKuu/INF443/blob/master/report/screenshot.png)
 
 ![](https://github.com/DyeKuu/INF443/blob/master/report/screenshot1.png)
+
+Contributors
+============
+This project exists thanks to all the people who contribute.
+[qym7](https://github.com/qym7)
+[DyeKuu](https://github.com/DyeKuu)
