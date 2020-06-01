@@ -213,6 +213,6 @@ one is in the shader  \"mesh\" configuration and the other in
 \"wireframe\", in which you can find all the objects
 presented above.
 
-![](https://github.com/DyeKuu/INF443/blob/master/report/screenshot.png)
+![Demo](https://github.com/DyeKuu/INF443/blob/master/report/screenshot.png)
 
 ![](https://github.com/DyeKuu/INF443/blob/master/report/screenshot1.png)
