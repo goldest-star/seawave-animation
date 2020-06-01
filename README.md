@@ -40,7 +40,7 @@ $ b $ is a smooth function with a value between $ [0,1] $ and not periodic.
 The noise of Perlin $ P $ is obtained by summing several instances of bb
 with increasing frequencies, and decreasing amplitude.
 
-- <img src="https://latex.codecogs.com/png.latex? P (p) = h \ sum_ {k = 0} ^ {octaves} \ alpha ^ k b (2 ^ k s p)  " /> 
+- <img src="https://latex.codecogs.com/gif.latex? P (p) = h \ sum_ {k = 0} ^ {octaves} \ alpha ^ k b (2 ^ k s p)  " /> 
 $$ P (p) = h \ sum_ {k = 0} ^ {octaves} \ alpha ^ k b (2 ^ k s p) $$
 
 Hence $ \ alpha $ is the persistence, $ s $ is the scaling parameter, $ h $
