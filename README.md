@@ -1,9 +1,9 @@
 ## Table of Contents
 - [How to run](#how-to-run)
-- [General description](#hierarchical-organization)
-- [UpwardDrawing presentation](#upwarddrawing-presentation)
-- [Node and NodeSegment presentation](#node-and-nodesegment-presentation)
-- [DirectedGraph presentation](#directedgraph-presentation)
+- [General description](#general-description)
+- [Implementation details](#implementation-details)
+- [Demonstration of the scene](#demonstration-of-the-scene)
+- [Contributors](#contributors)
 - [License](#license)
 
 How to run
@@ -216,3 +216,7 @@ This project exists thanks to all the people who contribute.
 
 [qym7](https://github.com/qym7)
 [DyeKuu](https://github.com/DyeKuu)
+
+License
+==========
+[MIT License](https://raw.githubusercontent.com/DyeKuu/OpenGL-Seawave-Animation-INF443/master/LICENSE)
