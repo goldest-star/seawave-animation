@@ -58,12 +58,13 @@ the process in the direct sense.
 
 The functions concerned are:
 
-$ \ mathsf {float \ evaluate \ _perlin \ _terrain \ _z (float \ u, float \ v, const \ gui \ _scene \ _structure \ & gui \ _scene)} $
+```C++
+float  evaluate_perlin_terrain_z (float  u, float  v, const  gui_scene_structure & gui_scene)
 
-$ \ mathsf {vec3 \ evaluate \ _perlin \ _terrain (float \ u, float \ v, const \ gui \ _scene \ _structure \ & gui \ _scene)} $
+vec3 evaluate_perlin_terrain (float u, float v, const gui_scene_structure & gui_scene)
 
-$ \ mathsf {void \ scene \ _model :: set \ _gui ()} $
-
+void scene_model :: set_gui ()
+```
 The Unknown Creature
 --------------------
 
