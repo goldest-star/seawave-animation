@@ -4,6 +4,13 @@ author:
 title: INF433 Project Report
 ---
 
+How to run
+==========
+```shell
+cd src
+make
+./pgm
+```
 General description
 =====================
 
