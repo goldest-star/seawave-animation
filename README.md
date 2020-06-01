@@ -1,6 +1,5 @@
 ---
-author:
-- Yiming Qin Kunhao ZHENG
+author: Yiming Qin Kunhao ZHENG
 title: INF433 Project Report
 ---
 
