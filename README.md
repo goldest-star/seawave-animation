@@ -35,6 +35,7 @@ can make people understand that war is cruel and ugly.
 
 Implementation details
 =========================
+More details can be found in our report located in report/Report_fr.pdf
 
 The wave
 --------
