@@ -59,7 +59,7 @@ the process in the direct sense.
 The functions concerned are:
 
 ```C++
-float  evaluate_perlin_terrain_z (float  u, float  v, const  gui_scene_structure & gui_scene)
+float evaluate_perlin_terrain_z (float u, float v, const gui_scene_structure & gui_scene)
 
 vec3 evaluate_perlin_terrain (float u, float v, const gui_scene_structure & gui_scene)
 
@@ -82,12 +82,13 @@ discuss later.
 
 3 functions are concerned:
 
-$ \ mathsf {hierarchy \ _mesh \ _drawable \ create \ _creature ()} $
+```C++
+hierarchy_mesh_drawable create_creature()
 
-$ \ mathsf {void \ set \ _creature \ _rotation (float \ t \ _creature)} $
+void set_creature_rotation(float t_creature)
 
-$ \ mathsf {void \ set \ _data \ _creature \ _animation (std :: map <std :: string, \ GLuint> \ & \ shaders)} $
-
+void set_data_creature_animation(std::map<std::string, GLuint>& shaders)
+```
 The fighter
 -------------
 
@@ -126,11 +127,13 @@ vector $ p '(t) $.
 
 3 functions are concerned:
 
-$\mathsf {hierarchy \ _mesh \ _drawable \ create \ _plane ()}$
+```C++
+hierarchy_mesh_drawable create_plane()
 
-$ \ mathsf {const \ vcl :: vec3 \ set \ _plane \ _rotation (float \ t \ _creature)} $
+const vcl::vec3 set_plane_rotation(float t_creature)
 
-$ \ mathsf {void \ set \ _data \ _plane \ _animation (std :: map <std :: string, \ GLuint> \ & \ shaders)} $
+const vcl::vec3 set_plane_rotation(float t_creature)
+```
 
 Skybox
 ------
@@ -164,10 +167,11 @@ $$ \ begin {aligned}
 
 The missile has the following functions:
 
-$ \ mathsf {void \ scene \ _model :: set \ _missle \ _animation (const \ vec3 \ & \ p \ _der)} $
+```C++
+void set_missle_animation(const vcl::vec3& p_der)
 
-$ \ mathsf {const \ vec3 \ scene \ _model :: set \ _plane \ _rotation (float \ t \ _creature)} $
-
+const vcl::vec3 set_plane_rotation(float t_creature)
+```
 Other objects
 -------------
 
@@ -198,13 +202,15 @@ clean texture.
 
 The corresponding functions are:
 
-$ \ mathsf {mesh \ create \ _island (const \ gui \ _scene \ _structure \ & \ gui \ _scene)} $
+```C++
+mesh create_island(const gui_scene_structure& gui_scene)
 
-$ \ mathsf {mesh \ create \ _fish (float \ length, float \ width)} $
+mesh create_fish(float length, float width)
 
-$ \ mathsf {mesh \ create \ _box (float \ height, float \ width, float \ length)} $
+mesh create_box(float hight, float width, float length)
 
-$ \ mathsf {mesh \ create \ _boat (float \ length, float \ width, float \ height)} $
+mesh create_boat(float length, float width, float height)
+```
 
 Demonstration of the scene
 =======================
