@@ -133,7 +133,7 @@ level of the edges must be consistent on all the faces.
 
 Once the cube is created, it is placed so as to encompass the
 scene, and permanently centered around the camera position. The
-size is specified using a $ b $ parameter passed in the function
+size is specified using a *b* parameter passed in the function
 
 ```C++
 mesh create_sky (float  b)
