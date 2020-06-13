@@ -218,6 +218,8 @@ This project exists thanks to all the people who contribute.
 [qym7](https://github.com/qym7)
 [DyeKuu](https://github.com/DyeKuu)
 
+We have also used the library VCL from 
+https://github.com/drohmer/inf443_vcl
 License
 ==========
 [MIT License](https://github.com/DyeKuu/OpenGL-Seawave-Animation-INF443/blob/master/LICENSE)
