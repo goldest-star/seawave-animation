@@ -220,6 +220,7 @@ This project exists thanks to all the people who contribute.
 
 We have also used the library VCL from 
 https://github.com/drohmer/inf443_vcl
+
 License
 ==========
 [MIT License](https://github.com/DyeKuu/OpenGL-Seawave-Animation-INF443/blob/master/LICENSE)
